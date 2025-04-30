@@ -1,0 +1,12 @@
+{
+  "odt1": {"type": "datetime", "value": "1979-05-27 07:32:00+00:00"},
+  "odt2": {"type": "datetime", "value": "1979-05-27 00:32:00-07:00"},
+  "odt3": {"type": "datetime", "value": "1979-05-27 00:32:00.999-07:00"},
+  "odt4": {"type": "datetime", "value": "1979-05-27 07:32:00+00:00"},
+  "ldt1": {"type": "datetime-local", "value": "1979-05-27 07:32:00"},
+  "ldt2": {"type": "datetime-local", "value": "1979-05-27 00:32:00.999"},
+  "ld1": {"type": "date-local", "value": "1979-05-27"},
+  "lt1": {"type": "time-local", "value": "07:32:00"},
+  "lt2": {"type": "time-local", "value": "00:32:00.999"},
+  "lower": {"type": "datetime", "value": "1987-07-05 17:45:00+00:00"}
+}

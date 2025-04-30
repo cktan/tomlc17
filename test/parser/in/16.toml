@@ -1,0 +1,17 @@
+# all results are the same
+
+str1 = "abc"
+
+str2 = """
+a\
+
+
+         b\
+           c"""
+
+str3 = """\
+              a\
+              b\
+              c\
+              """
+

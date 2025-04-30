@@ -1,0 +1,12 @@
+
+# integers
+ = [ 1, 2, 3 ]
+
+# colors
+ = [ "red", "yellow", "green" ]
+
+# nested
+ = [ [ 1, 2 ], [3, 4, 5] ]
+ = [ [ 1, 2 ], ["a", "b", "c"] ]
+ = [ "all", 'strings', """are the same""", '''type''' ]
+

@@ -1,0 +1,5 @@
+{
+  "str1": {"type": "string", "value": "Roses are red\nViolets are blue"},
+  "str2": {"type": "string", "value": "Roses are red\nViolets are blue"},
+  "str3": {"type": "string", "value": "Roses are red\r\nViolets are blue"}
+}

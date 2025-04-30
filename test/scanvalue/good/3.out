@@ -1,0 +1,13 @@
+EQUAL 1 1 =
+MLLITSTRING 6 49 Here are fifteen quotation marks: """""""""""""""
+ENDL 58 1 _
+ENDL 59 1 _
+ENDL 133 1 _
+EQUAL 135 1 =
+STRING 138 45 Here are fifteen apostrophes: '''''''''''''''
+ENDL 184 1 _
+ENDL 185 1 _
+ENDL 227 1 _
+EQUAL 229 1 =
+MLLITSTRING 234 39 'That,' she said, 'is still pointless.'
+ENDL 276 1 _

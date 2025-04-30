@@ -1,0 +1,9 @@
+# line-ending backslash with whitespace "geeee\  "
+# result should be "heeee\ngeeee"
+
+str = """
+heeee
+geeee\  
+
+
+             """

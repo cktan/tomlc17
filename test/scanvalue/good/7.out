@@ -1,0 +1,22 @@
+ENDL 0 1 _
+ENDL 11 1 _
+EQUAL 13 1 =
+FLOAT 15 3 inf inf
+ENDL 39 1 _
+EQUAL 41 1 =
+FLOAT 43 4 +inf inf
+ENDL 67 1 _
+EQUAL 69 1 =
+FLOAT 71 4 -inf -inf
+ENDL 95 1 _
+ENDL 96 1 _
+ENDL 111 1 _
+EQUAL 113 1 =
+FLOAT 115 3 nan nan
+ENDL 174 1 _
+EQUAL 176 1 =
+FLOAT 178 4 +nan nan
+ENDL 198 1 _
+EQUAL 200 1 =
+FLOAT 202 4 -nan -nan
+ENDL 258 1 _

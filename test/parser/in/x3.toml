@@ -1,0 +1,3 @@
+[[tab.arr]]
+[tab]
+arr.val1=1   # ERROR: arr was previously defined

@@ -1,0 +1,18 @@
+EQUAL 0 1 =
+LITSTRING 3 25 C:\Users\nodejs\templates
+ENDL 29 1 _
+EQUAL 30 1 =
+LITSTRING 33 26 \\ServerX\admin$\system32\
+ENDL 60 1 _
+EQUAL 61 1 =
+LITSTRING 64 25 Tom "Dubs" Preston-Werner
+ENDL 90 1 _
+EQUAL 91 1 =
+LITSTRING 94 10 <\i\c*\s*>
+ENDL 105 1 _
+EQUAL 106 1 =
+MLLITSTRING 111 28 I [dw]on't need \d{2} apples
+ENDL 142 1 _
+EQUAL 143 1 =
+MLLITSTRING 149 86 The first newline is_trimmed in raw strings._   All other whitespace_   is preserved._
+ENDL 238 1 _

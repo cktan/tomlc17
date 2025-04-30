@@ -1,0 +1,7 @@
+ = '''Here are fifteen quotation marks: """""""""""""""'''
+
+# apos15 = '''Here are fifteen apostrophes: ''''''''''''''''''  # INVALID
+ = "Here are fifteen apostrophes: '''''''''''''''"
+
+# 'That,' she said, 'is still pointless.'
+ = ''''That,' she said, 'is still pointless.''''

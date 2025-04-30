@@ -1,0 +1,16 @@
+{
+  "flt1": {"type": "float", "value": "1.0"},
+  "flt2": {"type": "float", "value": "3.1415"},
+  "flt3": {"type": "float", "value": "-0.01"},
+  "flt4": {"type": "float", "value": "5e+22"},
+  "flt5": {"type": "float", "value": "1000000.0"},
+  "flt6": {"type": "float", "value": "-0.02"},
+  "flt7": {"type": "float", "value": "6.626e-34"},
+  "flt8": {"type": "float", "value": "224617.445991228"},
+  "sf1": {"type": "float", "value": "inf"},
+  "sf2": {"type": "float", "value": "inf"},
+  "sf3": {"type": "float", "value": "-inf"},
+  "sf4": {"type": "float", "value": "nan"},
+  "sf5": {"type": "float", "value": "nan"},
+  "sf6": {"type": "float", "value": "-nan"}
+}

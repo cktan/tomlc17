@@ -1,0 +1,5 @@
+ENDL 0 1 _
+EQUAL 2 1 =
+LBRACE 4 1 {
+RBRACE 6 1 }
+ENDL 7 1 _

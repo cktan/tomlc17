@@ -1,0 +1,11 @@
+
+# multiline
+ = [
+  1, 2, 3
+]
+
+# extra comma at end
+ = [
+  1,
+  2, # this is ok
+]

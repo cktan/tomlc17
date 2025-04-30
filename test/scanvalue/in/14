@@ -1,0 +1,17 @@
+# all results are the same
+
+= "abc"
+
+= """
+a\
+
+
+         b\
+           c"""
+
+= """\
+              a\
+              b\
+              c\
+              """
+

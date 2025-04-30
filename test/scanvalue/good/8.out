@@ -1,0 +1,7 @@
+ENDL 0 1 _
+EQUAL 2 1 =
+BOOL 4 4 true true
+ENDL 8 1 _
+EQUAL 10 1 =
+BOOL 12 5 false false
+ENDL 17 1 _

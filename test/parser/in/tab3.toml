@@ -1,0 +1,11 @@
+# [x] you
+# [x.y] don't
+# [x.y.z] need these
+[x.y.z.w] # for this to work
+
+fruit = "apple"
+
+[x] # defining a super-table afterward is ok
+
+country = "usa"
+

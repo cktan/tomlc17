@@ -1,0 +1,6 @@
+{
+  "title": {"type": "string", "value": "TOML Example"},
+  "name": {"type": "string", "value": "Aero"},
+  "weight": {"type": "integer", "value": "40"},
+  "species": {"type": "string", "value": "Beagle"}
+}

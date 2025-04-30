@@ -1,0 +1,10 @@
+
+# infinity
+ = inf  # positive infinity
+ = +inf # positive infinity
+ = -inf # negative infinity
+
+# not a number
+ = nan  # actual sNaN/qNaN encoding is implementation-specific
+ = +nan # same as `nan`
+ = -nan # valid, actual encoding is implementation-specific

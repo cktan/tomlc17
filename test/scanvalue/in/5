@@ -1,0 +1,11 @@
+# hexadecimal with prefix `0x`
+ = 0xDEADBEEF
+ = 0xdeadbeef
+ = 0xdead_beef
+
+# octal with prefix `0o`
+ = 0o01234567
+ = 0o755 # useful for Unix file permissions
+
+# binary with prefix `0b`
+ = 0b11010110

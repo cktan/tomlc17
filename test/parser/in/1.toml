@@ -1,0 +1,7 @@
+# This is a TOML document
+
+"title" = "TOML Example"
+name = "Aero"
+weight = 40
+species = "Beagle"
+

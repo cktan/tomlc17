@@ -1,0 +1,16 @@
+= """
+Roses are red
+Violets are blue"""
+
+# On a Unix system, the above multi-line string will most likely be the same as:
+= "Roses are red\nViolets are blue"
+
+# On a Windows system, it will most likely be equivalent to:
+= "Roses are red\r\nViolets are blue"
+
+= """Here are two quotation marks: "". Simple enough."""
+= """Here are three quotation marks: ""\"."""
+= """Here are fifteen quotation marks: ""\"""\"""\"""\"""\"."""
+
+# "This," she said, "is just a pointless statement."
+= """"This," she said, "is just a pointless statement.""""# What you see is what you get.

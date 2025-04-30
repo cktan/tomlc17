@@ -1,0 +1,9 @@
+[a.b.c]			# OK
+answer = 42		# OK
+
+[a]			# OK - a was non-explicit and was created by std-table-expr
+better = 43		# OK - a is now explicit
+
+[t1]			# OK
+t2.t3.v = 0		# OK
+[t1.t2]   		# should FAIL  - t2 was non-explicit but was not created by std-table-expr

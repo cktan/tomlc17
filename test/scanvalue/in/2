@@ -1,0 +1,11 @@
+= 'C:\Users\nodejs\templates'
+= '\\ServerX\admin$\system32\'
+= 'Tom "Dubs" Preston-Werner'
+= '<\i\c*\s*>'
+= '''I [dw]on't need \d{2} apples'''
+= '''
+The first newline is
+trimmed in raw strings.
+   All other whitespace
+   is preserved.
+'''

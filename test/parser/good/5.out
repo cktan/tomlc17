@@ -1,0 +1,16 @@
+{
+  "int1": {"type": "integer", "value": "99"},
+  "int2": {"type": "integer", "value": "42"},
+  "int3": {"type": "integer", "value": "0"},
+  "int4": {"type": "integer", "value": "-17"},
+  "int5": {"type": "integer", "value": "1000"},
+  "int6": {"type": "integer", "value": "5349221"},
+  "int7": {"type": "integer", "value": "5349221"},
+  "int8": {"type": "integer", "value": "12345"},
+  "hex1": {"type": "integer", "value": "3735928559"},
+  "hex2": {"type": "integer", "value": "3735928559"},
+  "hex3": {"type": "integer", "value": "3735928559"},
+  "oct1": {"type": "integer", "value": "342391"},
+  "oct2": {"type": "integer", "value": "493"},
+  "bin1": {"type": "integer", "value": "214"}
+}

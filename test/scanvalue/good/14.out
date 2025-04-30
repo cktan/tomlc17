@@ -1,0 +1,14 @@
+ENDL 26 1 _
+ENDL 27 1 _
+EQUAL 28 1 =
+STRING 31 3 abc
+ENDL 35 1 _
+ENDL 36 1 _
+EQUAL 37 1 =
+MLSTRING 43 29 a\___         b\_           c
+ENDL 75 1 _
+ENDL 76 1 _
+EQUAL 77 1 =
+MLSTRING 82 67 \_              a\_              b\_              c\_              
+ENDL 152 1 _
+ENDL 153 1 _

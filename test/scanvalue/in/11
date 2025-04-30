@@ -1,0 +1,6 @@
+# Mixed-type arrays are allowed
+= [ 0.1, 0.2, 0.5, 1.0, 2, 5 ]
+ = [
+  "Foo Bar <foo@example.com>",
+  { }
+]

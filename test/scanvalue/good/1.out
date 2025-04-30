@@ -1,0 +1,28 @@
+EQUAL 0 1 =
+MLSTRING 6 30 Roses are red_Violets are blue
+ENDL 39 1 _
+ENDL 40 1 _
+ENDL 121 1 _
+EQUAL 122 1 =
+STRING 125 31 Roses are red\nViolets are blue
+ENDL 157 1 _
+ENDL 158 1 _
+ENDL 219 1 _
+EQUAL 220 1 =
+STRING 223 33 Roses are red\r\nViolets are blue
+ENDL 257 1 _
+ENDL 258 1 _
+EQUAL 259 1 =
+MLSTRING 264 48 Here are two quotation marks: "". Simple enough.
+ENDL 315 1 _
+EQUAL 316 1 =
+MLSTRING 321 37 Here are three quotation marks: ""\".
+ENDL 361 1 _
+EQUAL 362 1 =
+MLSTRING 367 55 Here are fifteen quotation marks: ""\"""\"""\"""\"""\".
+ENDL 425 1 _
+ENDL 426 1 _
+ENDL 479 1 _
+EQUAL 480 1 =
+MLSTRING 485 50 "This," she said, "is just a pointless statement."
+ENDL 569 1 _
