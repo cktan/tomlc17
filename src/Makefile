@@ -1,7 +1,6 @@
 HFILES = tomlc17.h
 CFILES = tomlc17.c
 OBJ = $(CFILES:.c=.o)
-PCFILE = libtomlc17.pc
 
 CFLAGS = -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
 LIB_VERSION = 1.0
@@ -25,19 +24,10 @@ libtomlc17.a: tomlc17.o
 $(LIB_SHARED): tomlc17.o
 	$(CC) -shared -o $@ $^
 
-scankey: scankey.c
-	$(CC) $(CFLAGS) -o $@ $@.c
-
-scanvalue: scanvalue.c
-	$(CC) $(CFLAGS) -o $@ $@.c
-
-parser: parser.c
-	$(CC) $(CFLAGS) -o $@ $@.c
-
 -include $(OBJ:%.o=%.d) $(EXEC:%=%.d)
 
 clean:
-	rm -f *.o *.d *.a $(EXEC)
+	rm -f *.o *.d *.a *.so.* $(EXEC)
 
 distclean: clean
 

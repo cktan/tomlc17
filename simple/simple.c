@@ -17,17 +17,17 @@ static void error(const char *msg, const char *msg1) {
 }
 
 int main() {
-  FILE *fp;
-
-  // Read and parse toml file
-  fp = fopen("simple.toml", "r");
+  // Open the toml file
+  FILE *fp = fopen("simple.toml", "r");
   if (!fp) {
     error("cannot open simple.toml - ", strerror(errno));
   }
 
+  // Parse the toml file
   toml_result_t result = toml_parse_file(fp);
-  fclose(fp);
+  fclose(fp); // done with the file handle
 
+  // Check for parse error
   if (!result.ok) {
     error(result.errmsg, 0);
   }

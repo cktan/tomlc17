@@ -1,4 +1,4 @@
-#include "tomlc17.c"
+#include "../../src/tomlc17.c"
 #include <inttypes.h>
 #include <stdlib.h>
 

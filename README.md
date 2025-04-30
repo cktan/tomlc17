@@ -3,13 +3,13 @@
 TOML in c17; v1.0 compliant.
 
 * Compatible with [TOML v1.0.0](https://toml.io/en/v1.0.0).
-* Passed the [standard test suites](github.com/toml-lang/toml-test/cmd/toml-test).
+* Passes the [standard test suites](github.com/toml-lang/toml-test/cmd/toml-test).
 
 ## Usage
 
 See the `tomlc17.h ` for details. 
 
-Parsing a toml document creates an tree data structure in memory that
+Parsing a toml document creates a tree data structure in memory that
 reflects the document. Information can be extracted by navigating this
 data structure.
 
@@ -38,17 +38,17 @@ static void error(const char* msg, const char* msg1)
 
 int main()
 {
-    FILE* fp;
-
-    // Read and parse toml file
-    fp = fopen("simple.toml", "r");
+    // Open toml file
+    FILE* fp = fopen("simple.toml", "r");
     if (!fp) {
         error("cannot open simple.toml - ", strerror(errno));
     }
 
+	// Parse the toml file
     toml_result_t result = toml_parse_file(fp);
-    fclose(fp);
+    fclose(fp);  // done with the file handle
 
+	// Check for parse error
     if (!result.ok) {
       error(result.errmsg, 0);
     }
@@ -83,5 +83,4 @@ int main()
     return 0;
 }
 ```
-
 
