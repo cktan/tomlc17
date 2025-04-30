@@ -6,7 +6,7 @@ CFLAGS = -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD
 LIB_VERSION = 1.0
 LIB = libtomlc17.a
 LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
-EXEC = scankey scanvalue parser 
+EXEC = 
 
 ifdef DEBUG
     CFLAGS += -O0 -g
