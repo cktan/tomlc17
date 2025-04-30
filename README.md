@@ -84,3 +84,10 @@ int main()
 }
 ```
 
+## Running tests
+
+```bash
+cd test
+bash run.sh
+```
+
