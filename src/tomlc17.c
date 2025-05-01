@@ -1350,32 +1350,43 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
 // Get the next char
 static int scan_get(scanner_t *sp) {
   int ret = FIN;
-  if (sp->cur < sp->endp) {
-    ret = *sp->cur++;
-    if (ret == '\r' && *sp->cur == '\n') {
-      ret = *sp->cur++;
+  const char *cur = sp->cur;
+  if (cur < sp->endp) {
+    ret = *cur++;
+    if (ret == '\r' && *cur == '\n') {
+      ret = *cur++;
     }
   }
+  sp->cur = cur;
   sp->lineno += (ret == '\n' ? 1 : 0);
   return ret;
 }
 
-// Unget the last char returned
-static inline void scan_unget(scanner_t *sp) {
-  if (sp->cur > sp->src) {
-    sp->cur--;
-    sp->lineno -= (*sp->cur == '\n' ? 1 : 0);
-    if (sp->cur - 1 >= sp->src && sp->cur[-1] == '\r') {
-      sp->cur--;
+// Skip the next char if it is in the accept[].
+// Returns true if skipped, false otherwise.
+static bool scan_skipmatch(scanner_t *sp, const char *accept) {
+  const char *cur = sp->cur;
+  if (cur < sp->endp) {
+    int ch = *cur++;
+    if (ch == '\r' && *cur == '\n') {
+      ch = *cur++;
+    }
+    if (ch && strchr(accept, ch)) {
+      sp->cur = cur;
+      sp->lineno += (ch == '\n' ? 1 : 0);
+      return true;
     }
   }
+  return false;
 }
 
+// Check if the next char matches ch.
 static inline bool scan_match(scanner_t *sp, int ch) {
   return (sp->cur[0] == ch) ||
          (ch == '\n' && sp->cur[0] == '\r' && sp->cur[1] == '\n');
 }
 
+// Check if the next n chars match ch.
 static inline bool scan_nmatch(scanner_t *sp, int ch, int n) {
   assert(ch != '\n'); // not handled
   const char *p = sp->cur;
@@ -1386,6 +1397,7 @@ static inline bool scan_nmatch(scanner_t *sp, int ch, int n) {
   return true;
 }
 
+// Skip the next n chars.
 static inline int scan_skip(scanner_t *sp, int n) {
   for (int i = 0; i < n; i++) {
     scan_get(sp);
@@ -1393,6 +1405,7 @@ static inline int scan_skip(scanner_t *sp, int n) {
   return 0;
 }
 
+// Initialize a token.
 static inline token_t mktoken(scanner_t *sp, toktyp_t typ) {
   token_t tok = {0};
   tok.toktyp = typ;
@@ -1402,17 +1415,20 @@ static inline token_t mktoken(scanner_t *sp, toktyp_t typ) {
 }
 
 #define S_GET() scan_get(sp)
-#define S_UNGET() scan_unget(sp)
 #define S_MATCH(ch) scan_match(sp, (ch))
 #define S_MATCH3(ch) scan_nmatch(sp, (ch), 3)
 #define S_MATCH4(ch) scan_nmatch(sp, (ch), 4)
 #define S_MATCH6(ch) scan_nmatch(sp, (ch), 6)
 #define S_SKIP3() scan_skip(sp, 3)
-#define S_SKIP4() scan_skip(sp, 4)
 
-static inline int is_valid_char(int ch) {
+static inline bool is_valid_char(int ch) {
   // i.e. (0x20 <= ch && ch <= 0x7e) || (ch & 0x80);
   return isprint(ch) || (ch & 0x80);
+}
+
+static inline bool is_hex_char(int ch) {
+  ch = toupper(ch);
+  return ('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'F');
 }
 
 // Initialize a scanner
@@ -1426,17 +1442,6 @@ static void scan_init(scanner_t *sp, const char *src, int len, char *errbuf,
   sp->lineno = 1;
   sp->ebuf.ptr = errbuf;
   sp->ebuf.len = errbufsz;
-}
-
-static int scan_nhex(const char *p, int n) {
-  for (int i = 0; i < n; i++) {
-    int ch = toupper(p[i]);
-    if (('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'F')) {
-      continue;
-    }
-    return -1;
-  }
-  return 0;
 }
 
 static int scan_multiline_string(scanner_t *sp, token_t *tok) {
@@ -1472,20 +1477,27 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
     if (ch == '\\') {
       ch = S_GET();
       if (ch && strchr("\"\\bfnrt", ch)) {
+        // skip \", \\, \b, \f, \n, \r, \t
         continue;
       }
       if (ch == 'u') {
-        if (scan_nhex(sp->cur, 4)) {
-          return reterr(sp->ebuf, sp->lineno, "expect 4 hex digits after \\u");
+        // skip 4 hex chars
+        for (int i = 0; i < 4; i++) {
+          if (!is_hex_char(S_GET())) {
+            return reterr(sp->ebuf, sp->lineno,
+                          "expect 4 hex digits after \\u");
+          }
         }
-        S_SKIP4();
         continue;
       }
       if (ch == 'U') {
-        if (scan_nhex(sp->cur, 8)) {
-          return reterr(sp->ebuf, sp->lineno, "expect 8 hex digits after \\U");
+        // skip 8 hex chars
+        for (int i = 0; i < 8; i++) {
+          if (!is_hex_char(S_GET())) {
+            return reterr(sp->ebuf, sp->lineno,
+                          "expect 8 hex digits after \\U");
+          }
         }
-        S_SKIP4(), S_SKIP4();
         continue;
       }
       if (ch == ' ' || ch == '\t') {
@@ -1504,10 +1516,9 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
       if (ch == '\n') {
         // got a line-ending backslash
         // - skip all whitespaces
-        do {
-          ch = S_GET();
-        } while (ch != FIN && ch && strchr(" \t\n", ch));
-        S_UNGET();
+        while (scan_skipmatch(sp, " \t\n")) {
+          ;
+        }
         continue;
       }
 
@@ -1545,17 +1556,22 @@ static int scan_string(scanner_t *sp, token_t *tok) {
         continue;
       }
       if (ch == 'u') {
-        if (scan_nhex(sp->cur, 4)) {
-          return reterr(sp->ebuf, sp->lineno, "expect 4 hex digits after \\u");
+        // skip 4 hex chars
+        for (int i = 0; i < 4; i++) {
+          if (!is_hex_char(S_GET())) {
+            return reterr(sp->ebuf, sp->lineno,
+                          "expect 4 hex digits after \\u");
+          }
         }
-        S_SKIP4();
         continue;
       }
       if (ch == 'U') {
-        if (scan_nhex(sp->cur, 8)) {
-          return reterr(sp->ebuf, sp->lineno, "expect 8 hex digits after \\U");
+        for (int i = 0; i < 8; i++) {
+          if (!is_hex_char(S_GET())) {
+            return reterr(sp->ebuf, sp->lineno,
+                          "expect 8 hex digits after \\U");
+          }
         }
-        S_SKIP4(), S_SKIP4();
         continue;
       }
       return reterr(sp->ebuf, sp->lineno, "bad escape char in string");
