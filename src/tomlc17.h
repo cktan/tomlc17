@@ -72,6 +72,9 @@ struct toml_result_t {
 /**
  * Parse a toml document. Returns a toml_result which must be freed
  * using toml_free() eventually.
+ *
+ * IMPORTANT: src[] must be a NUL terminated string! The len parameter
+ * does not include the NUL terminator.
  */
 TOML_EXTERN toml_result_t toml_parse(const char *src, int len);
 

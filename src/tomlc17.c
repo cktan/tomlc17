@@ -29,7 +29,7 @@ struct ebuf_t {
 };
 
 /*
- *  Format an error into ebuf[].
+ *  Format an error into ebuf[]. Always return -1.
  */
 static int reterr(ebuf_t ebuf, int lineno, const char *fmt, ...) {
   va_list args;
@@ -86,13 +86,14 @@ static char *pool_alloc(pool_t *pool, int n) {
   return ret;
 }
 
-/** This is a string view. */
+/* This is a string view. */
 typedef struct span_t span_t;
 struct span_t {
   const char *ptr;
   int len;
 };
 
+/* Represents a multi-part key */
 #define KEYPARTMAX 10
 typedef struct keypart_t keypart_t;
 struct keypart_t {
@@ -100,17 +101,7 @@ struct keypart_t {
   span_t span[KEYPARTMAX];
 };
 
-/**
- * Convert a char in utf8 into UCS, and store it in *ret.
- * Return #bytes consumed or -1 on failure.
- */
 static int utf8_to_ucs(const char *s, int len, uint32_t *ret);
-
-/**
- * Convert a UCS char to utf8 code, and return it in buf.
- * Return #bytes used in buf to encode the char, or
- * -1 on error.
- */
 static int ucs_to_utf8(uint32_t code, char buf[4]);
 
 // flags for toml_datum_t::flag.
@@ -148,6 +139,7 @@ enum toktyp_t {
 typedef enum toktyp_t toktyp_t;
 typedef struct scanner_t scanner_t;
 
+/* Remember the current state of a scanner */
 typedef struct scanner_state_t scanner_state_t;
 struct scanner_state_t {
   scanner_t *sp;
@@ -155,6 +147,7 @@ struct scanner_state_t {
   int lineno;      // current line number
 };
 
+// A scan token
 typedef struct token_t token_t;
 struct token_t {
   toktyp_t toktyp;
@@ -174,6 +167,7 @@ struct token_t {
   } u;
 };
 
+// Scanner object
 struct scanner_t {
   const char *src;  // src[] is a NUL-terminated string
   const char *endp; // end of src[]. always pointing at a NUL char.
@@ -381,7 +375,8 @@ toml_result_t toml_parse_file(FILE *fp) {
           return result;
         }
       }
-      char *x = REALLOC(buf, xsz);
+      // add an extra byte for terminating NUL
+      char *x = REALLOC(buf, xsz + 1);
       if (!x) {
         snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
         FREE(buf);
@@ -401,6 +396,7 @@ toml_result_t toml_parse_file(FILE *fp) {
     }
     off += n;
   }
+  buf[off] = 0;  // NUL terminator
 
   result = toml_parse(buf, off);
   FREE(buf);
@@ -419,8 +415,9 @@ toml_result_t toml_parse(const char *src, int len) {
   pp->ebuf.ptr = result.errmsg;
   pp->ebuf.len = sizeof(result.errmsg);
 
+  // If user insists, check that src[] is a valid utf8 string
   if (toml_option.check_utf8) {
-    int line = 1;
+    int line = 1;  // keeps track of line number
     for (int i = 0; i < len;) {
       uint32_t ch;
       int n = utf8_to_ucs(src + i, len - i, &ch);
@@ -440,7 +437,7 @@ toml_result_t toml_parse(const char *src, int len) {
     }
   }
 
-  // alloc pool
+  // Alloc pool
   pp->pool =
       pool_create(len + 10); // add some extra bytes for NUL term and safety
   if (!pp->pool) {
@@ -448,7 +445,7 @@ toml_result_t toml_parse(const char *src, int len) {
     return result;
   }
 
-  // init scanner
+  // Init scanner
   scan_init(&pp->scanner, src, len, pp->ebuf.ptr, pp->ebuf.len);
 
   // keep parsing until FIN
@@ -1238,6 +1235,8 @@ static int parse_expr(parser_t *pp) {
 // -> unescape all escaped chars
 // The returned string is allocated out of pp->sbuf[]
 static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
+  // Allocate a buffer to store the normalized string. Add one
+  // extra-byte for terminating NUL.
   char *p = pool_alloc(pp->pool, tok.str.len + 1);
   if (!p) {
     return reterr(pp->ebuf, tok.lineno, "out of memory");
@@ -1419,6 +1418,7 @@ static inline int is_valid_char(int ch) {
   return isprint(ch) || (ch & 0x80);
 }
 
+// Initialize a scanner
 static void scan_init(scanner_t *sp, const char *src, int len, char *errbuf,
                       int errbufsz) {
   memset(sp, 0, sizeof(*sp));
@@ -2363,9 +2363,9 @@ static int utf8_to_ucs(const char *orig, int len, uint32_t *ret) {
 }
 
 /**
- *	Convert a UCS char to utf8 code, and return it in buf.
- *	Return #bytes used in buf to encode the char, or
- *	-1 on error.
+ * Convert a UCS char to utf8 code, and return it in buf.
+ * Return #bytes used in buf to encode the char, or
+ * -1 on error.
  */
 static int ucs_to_utf8(uint32_t code, char buf[4]) {
   (void)utf8_to_ucs; // silent unused-function warning
