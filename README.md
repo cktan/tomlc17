@@ -44,11 +44,11 @@ int main()
         error("cannot open simple.toml - ", strerror(errno));
     }
 
-	// Parse the toml file
+    // Parse the toml file
     toml_result_t result = toml_parse_file(fp);
     fclose(fp);  // done with the file handle
 
-	// Check for parse error
+    // Check for parse error
     if (!result.ok) {
       error(result.errmsg, 0);
     }
