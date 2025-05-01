@@ -225,7 +225,7 @@ static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
   int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(nkey + 1));
   toml_datum_t *value =
       REALLOC(tab->u.tab.value, sizeof(*value) * align8(nkey + 1));
-  if (!pkey || !plen || !value)) {
+  if (!pkey || !plen || !value) {
       *reason = "out of memory";
       return -1;
     }
