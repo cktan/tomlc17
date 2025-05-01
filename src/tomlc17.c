@@ -1812,13 +1812,6 @@ done:
     }
     break;
   case DATETIME:
-    if (!is_valid_date(year, month, day)) {
-      return reterr(sp->ebuf, lineno, "invalid date");
-    }
-    if (!is_valid_time(hour, minute, sec, usec)) {
-      return reterr(sp->ebuf, lineno, "invalid time");
-    }
-    break;
   case DATETIMETZ:
     if (!is_valid_date(year, month, day)) {
       return reterr(sp->ebuf, lineno, "invalid date");
@@ -1826,7 +1819,7 @@ done:
     if (!is_valid_time(hour, minute, sec, usec)) {
       return reterr(sp->ebuf, lineno, "invalid time");
     }
-    if (!is_valid_timezone(tz)) {
+    if (tok->toktyp == DATETIMETZ && !is_valid_timezone(tz)) {
       return reterr(sp->ebuf, lineno, "invalid timezone");
     }
     break;
