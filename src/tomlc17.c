@@ -209,6 +209,8 @@ static int tab_find(toml_datum_t *tab, span_t key) {
 // On error, reason will point to an error message.
 static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
                    const char **reason) {
+
+  // Check for duplicate key
   int nkey = tab->u.tab.size;
   for (int i = 0; i < nkey; i++) {
     if (tab->u.tab.len[i] == newkey.len &&
@@ -218,32 +220,20 @@ static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
     }
   }
 
-  // expand pkey[]
+  // Expand pkey[], plen[] and value[]
   char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(nkey + 1));
-  if (!pkey) {
-    *reason = "out of memory";
-    return -1;
-  }
-  tab->u.tab.key = (const char **)pkey;
-
-  // expand plen[]
   int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(nkey + 1));
-  if (!plen) {
-    *reason = "out of memory";
-    return -1;
-  }
-  tab->u.tab.len = plen;
-
-  // expand value[]
   toml_datum_t *value =
       REALLOC(tab->u.tab.value, sizeof(*value) * align8(nkey + 1));
-  if (!value) {
-    *reason = "out of memory";
-    return -1;
-  }
+  if (!pkey || !plen || !value)) {
+      *reason = "out of memory";
+      return -1;
+    }
+  tab->u.tab.key = (const char **)pkey;
+  tab->u.tab.len = plen;
   tab->u.tab.value = value;
 
-  // append the new key/value
+  // Append the new key/value
   tab->u.tab.size = nkey + 1;
   pkey[nkey] = (char *)newkey.ptr;
   plen[nkey] = newkey.len;
@@ -396,7 +386,7 @@ toml_result_t toml_parse_file(FILE *fp) {
     }
     off += n;
   }
-  buf[off] = 0;  // NUL terminator
+  buf[off] = 0; // NUL terminator
 
   result = toml_parse(buf, off);
   FREE(buf);
@@ -417,7 +407,7 @@ toml_result_t toml_parse(const char *src, int len) {
 
   // If user insists, check that src[] is a valid utf8 string
   if (toml_option.check_utf8) {
-    int line = 1;  // keeps track of line number
+    int line = 1; // keeps track of line number
     for (int i = 0; i < len;) {
       uint32_t ch;
       int n = utf8_to_ucs(src + i, len - i, &ch);
