@@ -226,9 +226,9 @@ static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
   toml_datum_t *value =
       REALLOC(tab->u.tab.value, sizeof(*value) * align8(nkey + 1));
   if (!pkey || !plen || !value) {
-      *reason = "out of memory";
-      return -1;
-    }
+    *reason = "out of memory";
+    return -1;
+  }
   tab->u.tab.key = (const char **)pkey;
   tab->u.tab.len = plen;
   tab->u.tab.value = value;
@@ -400,12 +400,15 @@ toml_result_t toml_parse(const char *src, int len) {
   toml_result_t result = {0};
   parser_t parser = {0};
   parser_t *pp = &parser;
-  pp->toptab = mkdatum(TOML_TABLE);
-  pp->curtab = &pp->toptab;
-  pp->ebuf.ptr = result.errmsg;
-  pp->ebuf.len = sizeof(result.errmsg);
 
-  // If user insists, check that src[] is a valid utf8 string
+  // Check that src is NUL terminated.
+  if (src[len]) {
+    snprintf(result.errmsg, sizeof(result.errmsg),
+             "src[] must be NUL terminated");
+    goto bail;
+  }
+
+  // If user insists, check that src[] is a valid utf8 string.
   if (toml_option.check_utf8) {
     int line = 1; // keeps track of line number
     for (int i = 0; i < len;) {
@@ -414,31 +417,37 @@ toml_result_t toml_parse(const char *src, int len) {
       if (n < 0) {
         snprintf(result.errmsg, sizeof(result.errmsg),
                  "invalid UTF8 char on line %d", line);
-        return result;
+        goto bail;
       }
       if (0xD800 <= ch && ch <= 0xDFFF) {
         // explicitly prohibit surrogates (non-scalar unicode code point)
         snprintf(result.errmsg, sizeof(result.errmsg),
                  "invalid UTF8 char \\u%04x on line %d", ch, line);
-        return result;
+        goto bail;
       }
       line += (ch == '\n' ? 1 : 0);
       i += n;
     }
   }
 
-  // Alloc pool
+  // Initialize parser
+  pp->toptab = mkdatum(TOML_TABLE);
+  pp->curtab = &pp->toptab;
+  pp->ebuf.ptr = result.errmsg;
+  pp->ebuf.len = sizeof(result.errmsg);
+
+  // Alloc memory pool
   pp->pool =
       pool_create(len + 10); // add some extra bytes for NUL term and safety
   if (!pp->pool) {
     snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
-    return result;
+    goto bail;
   }
 
-  // Init scanner
+  // Initialize scanner.
   scan_init(&pp->scanner, src, len, pp->ebuf.ptr, pp->ebuf.len);
 
-  // keep parsing until FIN
+  // Keep parsing until FIN
   for (;;) {
     scanner_state_t mark = scan_mark(&pp->scanner);
     token_t tok;
