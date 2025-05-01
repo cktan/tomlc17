@@ -9,57 +9,6 @@ static void usage() {
   exit(1);
 }
 
-static char *readfile(const char *fname, int *ret_len) {
-  char *buf = 0;
-  int top = 0;
-  int max = 0;
-
-  FILE *fp = fname ? fopen(fname, "r") : stdin;
-  if (!fp) {
-    perror("fopen");
-    exit(1);
-  }
-
-  while (!feof(fp)) {
-    if (top == max) {
-      int newmax = max * 1.5 + 1024;
-      char *tmp = realloc(buf, max * 1.5 + 1024);
-      if (!tmp) {
-        fprintf(stderr, "ERROR: out of memory while reading file\n");
-        exit(99);
-      }
-      buf = tmp;
-      max = newmax;
-    }
-
-    errno = 0;
-    int n = fread(buf + top, 1, max - top, fp);
-    if (ferror(fp)) {
-      fprintf(stderr, "ERROR: %s while reading file\n",
-              errno ? strerror(errno) : "");
-      exit(99);
-    }
-
-    top += n;
-  }
-
-  if (top == max) {
-    char *tmp = realloc(buf, max + 1);
-    if (!tmp) {
-      fprintf(stderr, "ERROR: out of memory while reading file\n");
-      exit(99);
-    }
-    buf = tmp;
-    max = max + 1;
-  }
-
-  buf[top] = 0;
-  fclose(fp);
-
-  *ret_len = top;
-  return buf;
-}
-
 static void print_string(const char *s, int len) {
   printf("{\"type\": \"string\", \"value\": \"");
   for (int i = 0; i < len; i++) {
@@ -286,9 +235,14 @@ int main(int argc, const char *argv[]) {
   opt.check_utf8 = 1;
   toml_set_option(opt);
 
-  int len;
-  char *content = readfile(argc == 2 ? argv[1] : NULL, &len);
-  toml_result_t result = toml_parse(content, len);
+  const char *fname = (argc == 2 ? argv[1] : "/dev/stdin");
+  FILE *fp = fopen(fname, "r");
+  if (!fp) {
+    perror("fopen");
+    exit(1);
+  }
+  toml_result_t result = toml_parse_file(fp);
+  fclose(fp);
   if (!result.ok) {
     printf("%s\n", result.errmsg);
     exit(1);
@@ -298,6 +252,5 @@ int main(int argc, const char *argv[]) {
   printf("\n");
 
   toml_free(result);
-  free(content);
   return 0;
 }
