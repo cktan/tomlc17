@@ -1511,12 +1511,10 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
         continue;
       }
 
-      S_UNGET();
       return reterr(sp->ebuf, sp->lineno, "bad escape char in string");
     }
 
     if (!(is_valid_char(ch) || (ch && strchr(" \t\n", ch)))) {
-      S_UNGET();
       return reterr(sp->ebuf, sp->lineno, "invalid char in string");
     }
   }
@@ -1604,7 +1602,6 @@ static int scan_multiline_litstring(scanner_t *sp, token_t *tok) {
       return reterr(sp->ebuf, sp->lineno, "unterminated multiline lit string");
     }
     if (!(is_valid_char(ch) || (ch && strchr(" \t\n", ch)))) {
-      S_UNGET();
       return reterr(sp->ebuf, sp->lineno, "invalid char in string");
     }
   }
