@@ -809,8 +809,8 @@ static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
     return -1;
   }
   assert(tok.toktyp == LBRACE);
-  int need_comma = 0;
-  int was_comma = 0;
+  bool need_comma = 0;
+  bool was_comma = 0;
 
   // loop until RBRACE
   for (;;) {
@@ -830,8 +830,7 @@ static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
     // Got a comma: check if it is expected.
     if (tok.toktyp == COMMA) {
       if (need_comma) {
-        need_comma = 0;
-        was_comma = 1;
+        need_comma = 0, was_comma = 1;
         continue;
       }
       return reterr(pp->ebuf, tok.lineno, "unexpected comma");
@@ -894,8 +893,7 @@ static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
     if (tab_add(tab, lastkeypart, value, &reason)) {
       return reterr(pp->ebuf, tok.lineno, "%s", reason);
     }
-    need_comma = 1;
-    was_comma = 0;
+    need_comma = 1, was_comma = 0;
   }
 
   parse_set_flag_recursive(pp, ret_datum, FLAG_INLINED);
