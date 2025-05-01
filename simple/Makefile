@@ -12,6 +12,8 @@ all: simple
 simple: simple.c
 	$(CC) $(CFLAGS) -o $@ $@.c -L ../src -l tomlc17
 
+test:
+
 clean:
 	rm -f *.o *.d *.a $(EXEC)
 

@@ -1,7 +1,10 @@
 #!/bin/bash
-set -e
-make
 mkdir -p out
+
+echo
+echo =========================
+echo == parser test
+echo =========================
 
 for fname in {1..100} array{1..10} tab{1..10} x{1..10}; do
     IN="in/$fname.toml"

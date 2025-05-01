@@ -2,12 +2,12 @@
 
 prefix ?= /usr/local
 override prefix := $(prefix:%/=%)  # remove trailing /
-#DIRS = src tests
-DIRS = src simple
+DIRS = src simple test
 
 BUILDDIRS = $(DIRS:%=build-%)
 CLEANDIRS = $(DIRS:%=clean-%)
 FORMATDIRS = $(DIRS:%=format-%)
+TESTDIRS = $(DIRS:%=test-%)
 
 ###################################
 
@@ -28,8 +28,6 @@ export PCFILE
 
 all: $(BUILDDIRS)
 
-$(DIRS): $(BUILDDIRS)
-
 $(BUILDDIRS):
 	$(MAKE) -C $(@:build-%=%)
 
@@ -41,9 +39,14 @@ install: all
 	install -m 0644 -t ${prefix}/lib src/libtomlc17.a
 	@echo "$$PCFILE" >> ${prefix}/lib/pkgconfig/tomlc17.pc
 
+test: $(TESTDIRS)
+
 format: $(FORMATDIRS)
 
 clean: $(CLEANDIRS)
+
+$(TESTDIRS):
+	$(MAKE) -C $(@:test-%=%) test
 
 $(CLEANDIRS):
 	$(MAKE) -C $(@:clean-%=%) clean
@@ -52,4 +55,4 @@ $(FORMATDIRS):
 	$(MAKE) -C $(@:format-%=%) format
 
 .PHONY: $(DIRS) $(BUILDDIRS) $(CLEANDIRS) $(FORMATDIRS)
-.PHONY: all install format
+.PHONY: all install format test

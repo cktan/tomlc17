@@ -1351,6 +1351,7 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
 
 // -------------- scanner functions
 
+// Get the next char
 static int scan_get(scanner_t *sp) {
   int ret = FIN;
   if (sp->cur < sp->endp) {
@@ -1363,6 +1364,7 @@ static int scan_get(scanner_t *sp) {
   return ret;
 }
 
+// Unget the last char returned
 static inline void scan_unget(scanner_t *sp) {
   if (sp->cur > sp->src) {
     sp->cur--;
@@ -1561,11 +1563,9 @@ static int scan_string(scanner_t *sp, token_t *tok) {
         S_SKIP4(), S_SKIP4();
         continue;
       }
-      S_UNGET();
       return reterr(sp->ebuf, sp->lineno, "bad escape char in string");
     }
     if (!(is_valid_char(ch) || ch == ' ' || ch == '\t')) {
-      S_UNGET();
       return reterr(sp->ebuf, sp->lineno, "invalid char in string");
     }
   }

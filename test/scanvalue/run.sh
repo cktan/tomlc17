@@ -1,7 +1,10 @@
 #!/bin/bash
-set -e
-make
 mkdir -p out
+
+echo
+echo =========================
+echo == scanvalue test
+echo =========================
 
 for fname in {1..100}; do
     IN="in/$fname"
