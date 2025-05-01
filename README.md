@@ -13,6 +13,9 @@ Parsing a toml document creates a tree data structure in memory that
 reflects the document. Information can be extracted by navigating this
 data structure.
 
+Note: you can simply include `tomlc17.h` and `tomlc17.c` in your
+project without running `make` and building the library.
+
 The following is a simple example:
 ```c
 /*

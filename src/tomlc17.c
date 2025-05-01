@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -57,6 +58,9 @@ struct pool_t {
  *  success, or NULL if out of memory.
  */
 static pool_t *pool_create(int N) {
+  if (N <= 0) {
+    return NULL;
+  }
   int totalsz = sizeof(pool_t) + N;
   pool_t *pool = MALLOC(totalsz);
   memset(pool, 0, totalsz);
@@ -366,7 +370,17 @@ toml_result_t toml_parse_file(FILE *fp) {
   while (!feof(fp)) {
 
     if (off == bufsz) {
-      int xsz = bufsz + 1000;
+      int xsz = (bufsz * 1.5) + 1000;
+      if (xsz < 0) {
+        if (bufsz < INT_MAX) {
+          xsz = INT_MAX;
+        } else {
+          snprintf(result.errmsg, sizeof(result.errmsg),
+                   "file is bigger than %d bytes", INT_MAX);
+          FREE(buf);
+          return result;
+        }
+      }
       char *x = REALLOC(buf, xsz);
       if (!x) {
         snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
@@ -482,7 +496,7 @@ bail:
   return result;
 }
 
-// Cnvert a (LITSTRING, LIT, MLLITSTRING, MLSTRING, or STRING) in tok to a
+// Convert a (LITSTRING, LIT, MLLITSTRING, MLSTRING, or STRING) in tok to a
 // datum.
 static int token_to_string(parser_t *pp, token_t tok, toml_datum_t *ret) {
   *ret = mkdatum(TOML_STRING);
@@ -980,6 +994,7 @@ static int parse_std_table_expr(parser_t *pp) {
     if (tab_add(tab, lastkeypart, newtab, &reason)) {
       return reterr(pp->ebuf, keylineno, "%s", reason);
     }
+    // this is the new tab
     tab = &tab->u.tab.value[tab->u.tab.size - 1];
   } else {
     // Found: check for errors
@@ -1007,10 +1022,10 @@ static int parse_std_table_expr(parser_t *pp) {
     }
   }
 
-  // Set explicit flag on the final table
+  // Set explicit flag on tab
   tab->flag |= FLAG_EXPLICIT;
 
-  // Set this tab as curtab of the parser
+  // Set tab as curtab of the parser
   pp->curtab = tab;
   return 0;
 }
@@ -1128,6 +1143,7 @@ static int parse_array_table_expr(parser_t *pp) {
   return 0;
 }
 
+// Parse an expression. A toml doc is just a list of expressions.
 static int parse_expr(parser_t *pp) {
   // table = std-table | array-table
   // std-table = [ key ]
@@ -1145,6 +1161,7 @@ static int parse_expr(parser_t *pp) {
     return parse_std_table_expr(pp);
   }
 
+  // Obtain the key
   // expression = keyval
   // keyval = key keyval-sep val
   int keylineno;
@@ -1152,6 +1169,8 @@ static int parse_expr(parser_t *pp) {
   if (parse_key(pp, &keypart, &keylineno)) {
     return -1;
   }
+
+  // match the '-'
   if (scan_key(&pp->scanner, &tok)) {
     return -1;
   }
@@ -1159,12 +1178,13 @@ static int parse_expr(parser_t *pp) {
     return reterr(pp->ebuf, tok.lineno, "expect '='");
   }
 
+  // Obtain the value
   toml_datum_t val;
   if (parse_val(pp, &val)) {
     return -1;
   }
 
-  // locate the table
+  // Locate the last table using keypart[]
   const char *reason;
   toml_datum_t *tab = pp->curtab;
   for (int i = 0; i < keypart.nspan - 1; i++) {
@@ -1196,6 +1216,7 @@ static int parse_expr(parser_t *pp) {
                   keypart.span[i].ptr);
   }
 
+  // Check for disallowed situations.
   if (tab->flag & FLAG_INLINED) {
     return reterr(pp->ebuf, keylineno, "inline table cannot be extended");
   }
@@ -1205,6 +1226,7 @@ static int parse_expr(parser_t *pp) {
         "cannot extend a previously defined table using dotted expression");
   }
 
+  // Add a new key/value for tab.
   if (tab_add(tab, keypart.span[keypart.nspan - 1], val, &reason)) {
     return reterr(pp->ebuf, keylineno, "%s", reason);
   }
