@@ -235,12 +235,15 @@ int main(int argc, const char *argv[]) {
   opt.check_utf8 = 1;
   toml_set_option(opt);
 
-  const char *fname = (argc == 2 ? argv[1] : "/dev/stdin");
-  FILE *fp = fopen(fname, "r");
-  if (!fp) {
-    perror("fopen");
-    exit(1);
+  FILE *fp = stdin;
+  if (argc == 2) {
+    fp = fopen(argv[1], "r");
+    if (!fp) {
+      perror("fopen");
+      exit(1);
+    }
   }
+
   toml_result_t result = toml_parse_file(fp);
   fclose(fp);
   if (!result.ok) {
