@@ -715,18 +715,17 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
 }
 
 // Recursively set flags on datum
-static void parse_set_flag_recursive(parser_t *pp, toml_datum_t *datum,
-                                     uint32_t flag) {
+static void set_flag_recursive(toml_datum_t *datum, uint32_t flag) {
   datum->flag |= flag;
   switch (datum->type) {
   case TOML_ARRAY:
     for (int i = 0, top = datum->u.arr.size; i < top; i++) {
-      parse_set_flag_recursive(pp, &datum->u.arr.elem[i], flag);
+      set_flag_recursive(&datum->u.arr.elem[i], flag);
     }
     break;
   case TOML_TABLE:
     for (int i = 0, top = datum->u.tab.size; i < top; i++) {
-      parse_set_flag_recursive(pp, &datum->u.tab.value[i], flag);
+      set_flag_recursive(&datum->u.tab.value[i], flag);
     }
     break;
   default:
@@ -797,7 +796,7 @@ static int parse_inline_array(parser_t *pp, toml_datum_t *ret_datum) {
   }
 
   // Set the INLINE flag for all things in this array.
-  parse_set_flag_recursive(pp, ret_datum, FLAG_INLINED);
+  set_flag_recursive(ret_datum, FLAG_INLINED);
   return 0;
 }
 
@@ -896,7 +895,7 @@ static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
     need_comma = 1, was_comma = 0;
   }
 
-  parse_set_flag_recursive(pp, ret_datum, FLAG_INLINED);
+  set_flag_recursive(ret_datum, FLAG_INLINED);
   return 0;
 }
 
