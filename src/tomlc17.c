@@ -1837,7 +1837,7 @@ static int scan_float(scanner_t *sp, token_t *tok) {
   int n;
   p = sp->cur;
   p += (*p == '+' || *p == '-') ? 1 : 0;
-  if (0 == strncmp(p, "nan", 3) || (0 == strncmp(p, "inf", 3))) {
+  if (0 == memcmp(p, "nan", 3) || (0 == memcmp(p, "inf", 3))) {
     p += 3;
     n = p - sp->cur;
     memcpy(buffer, sp->cur, n);
@@ -1976,6 +1976,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
     }
   }
 
+  // Process integer or float
   p += (*p == '+' || *p == '-') ? 1 : 0;
   p += strspn(p, "_0123456789");
   n = p - sp->cur;
