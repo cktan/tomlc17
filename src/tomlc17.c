@@ -603,7 +603,7 @@ static int parse_key(parser_t *pp, keypart_t *ret_keypart, int *keylineno) {
   // Normalize the first keypart
   if (parse_norm(pp, tok, &kpspan[n])) {
     return ERROR(pp->ebuf, tok.lineno,
-                  "unable to normalize string; probably a unicode issue");
+                 "unable to normalize string; probably a unicode issue");
   }
   n++;
 
@@ -637,7 +637,7 @@ static int parse_key(parser_t *pp, keypart_t *ret_keypart, int *keylineno) {
     // Normalize the n-th key.
     if (parse_norm(pp, tok, &kpspan[n])) {
       return ERROR(pp->ebuf, tok.lineno,
-                    "unable to normalize string; probably a unicode issue");
+                   "unable to normalize string; probably a unicode issue");
     }
     n++;
   }
@@ -685,7 +685,7 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
       // If empty: error.
       if (value->u.arr.size <= 0) {
         ERROR(pp->ebuf, lineno, "array %s has no elements",
-               keypart->span[i].ptr);
+              keypart->span[i].ptr);
         return NULL;
       }
 
@@ -695,7 +695,7 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
       // It must be a table!
       if (value->type != TOML_TABLE) {
         ERROR(pp->ebuf, lineno, "array %s must be array of tables",
-               keypart->span[i].ptr);
+              keypart->span[i].ptr);
         return NULL;
       }
 
@@ -706,7 +706,7 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
 
     // key not found
     ERROR(pp->ebuf, lineno, "cannot locate table at key %s",
-           keypart->span[i].ptr);
+          keypart->span[i].ptr);
     return NULL;
   }
 
@@ -767,13 +767,13 @@ static int parse_inline_array(parser_t *pp, toml_datum_t *ret_datum) {
         continue;
       }
       return ERROR(pp->ebuf, tok.lineno,
-                    "syntax error while parsing array: unexpected comma");
+                   "syntax error while parsing array: unexpected comma");
     }
 
     // Not a comma, but need a comma: error!
     if (need_comma) {
       return ERROR(pp->ebuf, tok.lineno,
-                    "syntax error while parsing array: missing comma");
+                   "syntax error while parsing array: missing comma");
     }
 
     // This is a valid value!
@@ -1085,17 +1085,16 @@ static int parse_array_table_expr(parser_t *pp) {
     // continue descent.
     if (value->type == TOML_ARRAY) {
       if (value->flag & FLAG_INLINED) {
-        return ERROR(pp->ebuf, keylineno, "cannot expand array %s",
-                      curkey.ptr);
+        return ERROR(pp->ebuf, keylineno, "cannot expand array %s", curkey.ptr);
       }
       if (value->u.arr.size <= 0) {
         return ERROR(pp->ebuf, keylineno, "array %s has no elements",
-                      curkey.ptr);
+                     curkey.ptr);
       }
       value = &value->u.arr.elem[value->u.arr.size - 1];
       if (value->type != TOML_TABLE) {
         return ERROR(pp->ebuf, keylineno, "array %s must be array of tables",
-                      curkey.ptr);
+                     curkey.ptr);
       }
       tab = value;
       continue;
@@ -1103,7 +1102,7 @@ static int parse_array_table_expr(parser_t *pp) {
 
     // keypart not found
     return ERROR(pp->ebuf, keylineno, "cannot locate table at key %s",
-                  curkey.ptr);
+                 curkey.ptr);
   }
 
   // For the final keypart, make sure entry at key is an array of tables
@@ -1203,11 +1202,11 @@ static int parse_expr(parser_t *pp) {
     }
     if (value->type == TOML_ARRAY) {
       return ERROR(pp->ebuf, keylineno,
-                    "encountered previously declared array '%s'",
-                    keypart.span[i].ptr);
+                   "encountered previously declared array '%s'",
+                   keypart.span[i].ptr);
     }
     return ERROR(pp->ebuf, keylineno, "cannot locate table at '%s'",
-                  keypart.span[i].ptr);
+                 keypart.span[i].ptr);
   }
 
   // Check for disallowed situations.
@@ -1315,7 +1314,7 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       int n = ucs_to_utf8(ucs, dst);
       if (n < 0) {
         return ERROR(pp->ebuf, tok.lineno, "error converting UCS %s to UTF8",
-                      buf);
+                     buf);
       }
       dst += n;
       p += 2 + sz;
@@ -1465,7 +1464,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
         // but sequences of 3 or more double quotes are not allowed
         if (S_MATCH6('"')) {
           return ERROR(sp->ebuf, sp->lineno,
-                        "detected sequences of 3 or more double quotes");
+                       "detected sequences of 3 or more double quotes");
         } else {
           ; // no problem
         }
@@ -1487,8 +1486,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
         // skip 4 hex chars
         for (int i = 0; i < 4; i++) {
           if (!is_hex_char(S_GET())) {
-            return ERROR(sp->ebuf, sp->lineno,
-                          "expect 4 hex digits after \\u");
+            return ERROR(sp->ebuf, sp->lineno, "expect 4 hex digits after \\u");
           }
         }
         continue;
@@ -1497,8 +1495,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
         // skip 8 hex chars
         for (int i = 0; i < 8; i++) {
           if (!is_hex_char(S_GET())) {
-            return ERROR(sp->ebuf, sp->lineno,
-                          "expect 8 hex digits after \\U");
+            return ERROR(sp->ebuf, sp->lineno, "expect 8 hex digits after \\U");
           }
         }
         continue;
@@ -1562,8 +1559,7 @@ static int scan_string(scanner_t *sp, token_t *tok) {
         // skip 4 hex chars
         for (int i = 0; i < 4; i++) {
           if (!is_hex_char(S_GET())) {
-            return ERROR(sp->ebuf, sp->lineno,
-                          "expect 4 hex digits after \\u");
+            return ERROR(sp->ebuf, sp->lineno, "expect 4 hex digits after \\u");
           }
         }
         continue;
@@ -1571,8 +1567,7 @@ static int scan_string(scanner_t *sp, token_t *tok) {
       if (ch == 'U') {
         for (int i = 0; i < 8; i++) {
           if (!is_hex_char(S_GET())) {
-            return ERROR(sp->ebuf, sp->lineno,
-                          "expect 8 hex digits after \\U");
+            return ERROR(sp->ebuf, sp->lineno, "expect 8 hex digits after \\U");
           }
         }
         continue;
@@ -1608,7 +1603,7 @@ static int scan_multiline_litstring(scanner_t *sp, token_t *tok) {
         // but sequences of 3 or more single quotes are not allowed
         if (S_MATCH6('\'')) {
           return ERROR(sp->ebuf, sp->lineno,
-                        "sequences of 3 or more single quotes");
+                       "sequences of 3 or more single quotes");
         } else {
           ; // no problem
         }
@@ -1892,7 +1887,7 @@ static int scan_float(scanner_t *sp, token_t *tok) {
     if (buffer[i] == '.') {
       if (i == 0 || !isdigit(buffer[i - 1]) || !isdigit(buffer[i + 1])) {
         return ERROR(sp->ebuf, lineno,
-                      "decimal point must be surrounded by digits");
+                     "decimal point must be surrounded by digits");
       }
     }
   }
@@ -1960,7 +1955,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
       // make sure _ are proper
       if (buffer[0] == '_' || buffer[n - 1] == '_' || strstr(buffer, "__")) {
         return ERROR(sp->ebuf, lineno,
-                      "underscore only allowed between digits");
+                     "underscore only allowed between digits");
       }
       // squeeze out the _
       char *q = buffer;
