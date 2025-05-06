@@ -1716,6 +1716,40 @@ static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
   return (cnt == 3 && n == 6 && (*tzsign == '+' || *tzsign == '-')) ? n : 0;
 }
 
+static int scan_time(scanner_t *sp, token_t *tok) {
+  int lineno = sp->lineno;
+  char buffer[20];
+  int len = sp->endp - sp->cur;
+  if (len >= (int)sizeof(buffer)) {
+    len = sizeof(buffer) - 1;
+  }
+  memcpy(buffer, sp->cur, len);
+  buffer[len] = 0; // NUL
+
+  char *p = buffer;
+  int hour, minute, sec, usec;
+  len = read_time(p, &hour, &minute, &sec, &usec);
+  if (len == 0) {
+    return ERROR(sp->ebuf, lineno, "invalid time");
+  }
+  if (!is_valid_time(hour, minute, sec, usec)) {
+    return ERROR(sp->ebuf, lineno, "invalid time");
+  }
+
+  *tok = mktoken(sp, TIME);
+  tok->str.len = len;
+  sp->cur += len;
+  tok->u.tsval.year = -1;
+  tok->u.tsval.month = -1;
+  tok->u.tsval.day = -1;
+  tok->u.tsval.hour = hour;
+  tok->u.tsval.minute = minute;
+  tok->u.tsval.sec = sec;
+  tok->u.tsval.usec = usec;
+  tok->u.tsval.tz = -1;
+  return 0;
+}
+
 static int scan_timestamp(scanner_t *sp, token_t *tok) {
   int year, month, day, hour, minute, sec, usec, tz;
   int n;
@@ -2036,22 +2070,26 @@ static int scan_bool(scanner_t *sp, token_t *tok) {
   return 0;
 }
 
+// Check if the next token may be TIME
 static inline bool scan_check_time(scanner_t *sp) {
   const char *p = sp->cur;
   return p + 2 < sp->endp && isdigit(p[0]) && isdigit(p[1]) && p[2] == ':';
 }
 
+// Check if the next token may be DATE
 static inline bool scan_check_date(scanner_t *sp) {
   const char *p = sp->cur;
   return p + 4 < sp->endp && isdigit(p[0]) && isdigit(p[1]) && isdigit(p[2]) &&
          isdigit(p[3]) && p[4] == '-';
 }
 
+// Check if the next token may be BOOL
 static inline bool scan_check_bool(scanner_t *sp) {
   const char *p = sp->cur;
   return p < sp->endp && (*p == 't' || *p == 'f');
 }
 
+// Check if the next token may be NUMBER
 static bool scan_check_number(scanner_t *sp) {
   const char *p = sp->cur;
   if (p + 1 < sp->endp) {
@@ -2069,7 +2107,7 @@ static bool scan_check_number(scanner_t *sp) {
     }
   }
   if (p + 3 < sp->endp) {
-    if (0 == strncmp(p, "nan", 3) || 0 == strncmp(p, "inf", 3)) {
+    if (0 == memcmp(p, "nan", 3) || 0 == memcmp(p, "inf", 3)) {
       return true;
     }
   }
@@ -2080,26 +2118,7 @@ static bool scan_check_number(scanner_t *sp) {
 static int scan_nonstring_literal(scanner_t *sp, token_t *tok) {
   int lineno = sp->lineno;
   if (scan_check_time(sp)) {
-    *tok = mktoken(sp, TIME);
-    int hour, minute, sec, usec;
-    int n = read_time(tok->str.ptr, &hour, &minute, &sec, &usec);
-    if (n == 0) {
-      return ERROR(sp->ebuf, lineno, "invalid time");
-    }
-    if (!is_valid_time(hour, minute, sec, usec)) {
-      return ERROR(sp->ebuf, lineno, "invalid time");
-    }
-    tok->str.len = n;
-    sp->cur = tok->str.ptr + n;
-    tok->u.tsval.year = -1;
-    tok->u.tsval.month = -1;
-    tok->u.tsval.day = -1;
-    tok->u.tsval.hour = hour;
-    tok->u.tsval.minute = minute;
-    tok->u.tsval.sec = sec;
-    tok->u.tsval.usec = usec;
-    tok->u.tsval.tz = -1;
-    return 0;
+    return scan_time(sp, tok);
   }
 
   if (scan_check_date(sp)) {
