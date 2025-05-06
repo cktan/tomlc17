@@ -1351,59 +1351,51 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
 // Get the next char
 static int scan_get(scanner_t *sp) {
   int ret = FIN;
-  const char *cur = sp->cur;
-  if (cur < sp->endp) {
-    ret = *cur++;
-    if (ret == '\r' && *cur == '\n') {
-      ret = *cur++;
+  const char *p = sp->cur;
+  if (p < sp->endp) {
+    ret = *p++;
+    if (ret == '\r' && p < sp->endp && *p == '\n') {
+      ret = *p++;
     }
   }
-  sp->cur = cur;
+  sp->cur = p;
   sp->lineno += (ret == '\n' ? 1 : 0);
   return ret;
 }
 
-// Skip the next char if it is in the accept[].
-// Returns true if skipped, false otherwise.
-static bool scan_skipmatch(scanner_t *sp, const char *accept) {
-  const char *cur = sp->cur;
-  if (cur < sp->endp) {
-    int ch = *cur++;
-    if (ch == '\r' && *cur == '\n') {
-      ch = *cur++;
-    }
-    if (ch && strchr(accept, ch)) {
-      sp->cur = cur;
-      sp->lineno += (ch == '\n' ? 1 : 0);
+// Check if the next char matches ch.
+static inline bool scan_match(scanner_t *sp, int ch) {
+  const char *p = sp->cur;
+  if (p < sp->endp && *p == ch) {
+    return true;
+  }
+  if (ch == '\n' && p + 1 < sp->endp) {
+    return p[0] == '\r' && p[1] == '\n';
+  }
+  return false;
+}
+
+// Check if the next char is in accept[].
+static bool scan_matchany(scanner_t *sp, const char *accept) {
+  for (; *accept; accept++) {
+    if (scan_match(sp, *accept)) {
       return true;
     }
   }
   return false;
 }
 
-// Check if the next char matches ch.
-static inline bool scan_match(scanner_t *sp, int ch) {
-  return (sp->cur[0] == ch) ||
-         (ch == '\n' && sp->cur[0] == '\r' && sp->cur[1] == '\n');
-}
-
 // Check if the next n chars match ch.
 static inline bool scan_nmatch(scanner_t *sp, int ch, int n) {
   assert(ch != '\n'); // not handled
+  if (sp->cur + n > sp->endp) {
+    return false;
+  }
   const char *p = sp->cur;
-  for (int i = 0; i < n; i++) {
-    if (p[i] != ch)
-      return false;
-  }
-  return true;
-}
-
-// Skip the next n chars.
-static inline int scan_skip(scanner_t *sp, int n) {
-  for (int i = 0; i < n; i++) {
-    scan_get(sp);
-  }
-  return 0;
+  int i;
+  for (i = 0; i < n && p[i] == ch; i++)
+    ;
+  return i == n;
 }
 
 // Initialize a token.
@@ -1420,7 +1412,6 @@ static inline token_t mktoken(scanner_t *sp, toktyp_t typ) {
 #define S_MATCH3(ch) scan_nmatch(sp, (ch), 3)
 #define S_MATCH4(ch) scan_nmatch(sp, (ch), 4)
 #define S_MATCH6(ch) scan_nmatch(sp, (ch), 6)
-#define S_SKIP3() scan_skip(sp, 3)
 
 static inline bool is_valid_char(int ch) {
   // i.e. (0x20 <= ch && ch <= 0x7e) || (ch & 0x80);
@@ -1447,7 +1438,7 @@ static void scan_init(scanner_t *sp, const char *src, int len, char *errbuf,
 
 static int scan_multiline_string(scanner_t *sp, token_t *tok) {
   assert(S_MATCH3('"'));
-  S_SKIP3(); // skip opening """
+  S_GET(), S_GET(), S_GET(); // skip opening """
 
   // According to spec: trim first newline after """
   if (S_MATCH('\n')) {
@@ -1475,63 +1466,56 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
     if (ch == FIN) {
       return ERROR(sp->ebuf, sp->lineno, "unterminated \"\"\"");
     }
-    if (ch == '\\') {
-      ch = S_GET();
-      if (ch && strchr("\"\\bfnrt", ch)) {
-        // skip \", \\, \b, \f, \n, \r, \t
-        continue;
+    // If non-escaped char ...
+    if (ch != '\\') {
+      if (!(is_valid_char(ch) || (ch && strchr(" \t\n", ch)))) {
+        return ERROR(sp->ebuf, sp->lineno, "invalid char in string");
       }
-      if (ch == 'u') {
-        // skip 4 hex chars
-        for (int i = 0; i < 4; i++) {
-          if (!is_hex_char(S_GET())) {
-            return ERROR(sp->ebuf, sp->lineno, "expect 4 hex digits after \\u");
-          }
-        }
-        continue;
-      }
-      if (ch == 'U') {
-        // skip 8 hex chars
-        for (int i = 0; i < 8; i++) {
-          if (!is_hex_char(S_GET())) {
-            return ERROR(sp->ebuf, sp->lineno, "expect 8 hex digits after \\U");
-          }
-        }
-        continue;
-      }
-      if (ch == ' ' || ch == '\t') {
-        // Although the spec does not allow for whitespace following a
-        // line-ending backslash, some standard tests expect it.
-        // Skip whitespace till EOL.
-        while (ch != FIN && ch && strchr(" \t", ch)) {
-          ch = S_GET();
-        }
-        if (ch != '\n') {
-          // some none-newline char followed backslash. error!
-          return ERROR(sp->ebuf, sp->lineno, "bad escape char in string");
-        }
-        // fallthru
-      }
-      if (ch == '\n') {
-        // got a line-ending backslash
-        // - skip all whitespaces
-        while (scan_skipmatch(sp, " \t\n")) {
-          ;
-        }
-        continue;
-      }
-
-      return ERROR(sp->ebuf, sp->lineno, "bad escape char in string");
+      continue;
     }
-
-    if (!(is_valid_char(ch) || (ch && strchr(" \t\n", ch)))) {
-      return ERROR(sp->ebuf, sp->lineno, "invalid char in string");
+    // ch is backslash; handle escape char
+    ch = S_GET();
+    if (ch && strchr("\"\\bfnrt", ch)) {
+      // skip \", \\, \b, \f, \n, \r, \t
+      continue;
     }
+    if (ch == 'u' || ch == 'U') {
+      int top = (ch == 'u' ? 4 : 8);
+      for (int i = 0; i < top; i++) {
+        if (!is_hex_char(S_GET())) {
+          return ERROR(sp->ebuf, sp->lineno, "expect %d hex digits after \\%c",
+                       top, ch);
+        }
+      }
+      continue;
+    }
+    if (ch == ' ' || ch == '\t') {
+      // Although the spec does not allow for whitespace following a
+      // line-ending backslash, some standard tests expect it.
+      // Skip whitespace till EOL.
+      while (ch != FIN && ch && strchr(" \t", ch)) {
+        ch = S_GET();
+      }
+      if (ch != '\n') {
+        // Got a backslash followed by whitespace
+        return ERROR(sp->ebuf, sp->lineno, "bad escape char in string");
+      }
+      // fallthru
+    }
+    if (ch == '\n') {
+      // got a line-ending backslash
+      // - skip all whitespaces
+      while (scan_matchany(sp, " \t\n")) {
+        S_GET();
+      }
+      continue;
+    }
+    return ERROR(sp->ebuf, sp->lineno, "bad escape char in string");
   }
   tok->str.len = sp->cur - tok->str.ptr;
 
   assert(S_MATCH3('"'));
-  S_SKIP3();
+  S_GET(), S_GET(), S_GET();
   return 0;
 }
 
@@ -1549,33 +1533,30 @@ static int scan_string(scanner_t *sp, token_t *tok) {
     if (ch == FIN) {
       return ERROR(sp->ebuf, sp->lineno, "unterminated string");
     }
-    if (ch == '\\') {
-      ch = S_GET();
-      if (ch && strchr("\"\\bfnrt", ch)) {
-        continue;
+    // If non-escaped char ...
+    if (ch != '\\') {
+      if (!(is_valid_char(ch) || ch == ' ' || ch == '\t')) {
+        return ERROR(sp->ebuf, sp->lineno, "invalid char in string");
       }
-      if (ch == 'u') {
-        // skip 4 hex chars
-        for (int i = 0; i < 4; i++) {
-          if (!is_hex_char(S_GET())) {
-            return ERROR(sp->ebuf, sp->lineno, "expect 4 hex digits after \\u");
-          }
-        }
-        continue;
-      }
-      if (ch == 'U') {
-        for (int i = 0; i < 8; i++) {
-          if (!is_hex_char(S_GET())) {
-            return ERROR(sp->ebuf, sp->lineno, "expect 8 hex digits after \\U");
-          }
-        }
-        continue;
-      }
-      return ERROR(sp->ebuf, sp->lineno, "bad escape char in string");
+      continue;
     }
-    if (!(is_valid_char(ch) || ch == ' ' || ch == '\t')) {
-      return ERROR(sp->ebuf, sp->lineno, "invalid char in string");
+    // ch is backslash; handle escape char
+    ch = S_GET();
+    if (ch && strchr("\"\\bfnrt", ch)) {
+      // skip \", \\, \b, \f, \n, \r, \t
+      continue;
     }
+    if (ch == 'u' || ch == 'U') {
+      int top = (ch == 'u' ? 4 : 8);
+      for (int i = 0; i < top; i++) {
+        if (!is_hex_char(S_GET())) {
+          return ERROR(sp->ebuf, sp->lineno, "expect %d hex digits after \\%c",
+                       top, ch);
+        }
+      }
+      continue;
+    }
+    return ERROR(sp->ebuf, sp->lineno, "bad escape char in string");
   }
   tok->str.len = sp->cur - tok->str.ptr;
 
@@ -1586,7 +1567,7 @@ static int scan_string(scanner_t *sp, token_t *tok) {
 
 static int scan_multiline_litstring(scanner_t *sp, token_t *tok) {
   assert(S_MATCH3('\''));
-  S_SKIP3(); // skip opening '''
+  S_GET(), S_GET(), S_GET(); // skip opening '''
 
   // According to spec: trim first newline after '''
   if (S_MATCH('\n')) {
@@ -1621,7 +1602,7 @@ static int scan_multiline_litstring(scanner_t *sp, token_t *tok) {
   tok->str.len = sp->cur - tok->str.ptr;
 
   assert(S_MATCH3('\''));
-  S_SKIP3();
+  S_GET(), S_GET(), S_GET();
   return 0;
 }
 
@@ -1738,16 +1719,25 @@ static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
 static int scan_timestamp(scanner_t *sp, token_t *tok) {
   int year, month, day, hour, minute, sec, usec, tz;
   int n;
-  *tok = mktoken(sp, FIN);
-  const char *p = tok->str.ptr;
+  // make a copy of sp->cur into buffer to ensure NUL terminated string
+  char buffer[80];
+  int len = sp->endp - sp->cur;
+  if (len >= (int)sizeof(buffer)) {
+    len = sizeof(buffer) - 1;
+  }
+  memcpy(buffer, sp->cur, len);
+  buffer[len] = 0; // NUL
+
+  toktyp_t toktyp = FIN;
   int lineno = sp->lineno;
+  const char *p = buffer;
   if (isdigit(p[0]) && isdigit(p[1]) && p[2] == ':') {
     year = month = day = hour = minute = sec = usec = tz = -1;
-    n = read_time(p, &hour, &minute, &sec, &usec);
+    n = read_time(buffer, &hour, &minute, &sec, &usec);
     if (!n) {
       return ERROR(sp->ebuf, lineno, "invalid time");
     }
-    tok->toktyp = TIME;
+    toktyp = TIME;
     p += n;
     goto done;
   }
@@ -1757,7 +1747,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   if (!n) {
     return ERROR(sp->ebuf, lineno, "invalid date");
   }
-  tok->toktyp = DATE;
+  toktyp = DATE;
   p += n;
   if (!((p[0] == 'T' || p[0] == ' ' || p[0] == 't') && isdigit(p[1]) &&
         isdigit(p[2]) && p[3] == ':')) {
@@ -1768,7 +1758,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   if (!n) {
     return ERROR(sp->ebuf, lineno, "invalid timestamp");
   }
-  tok->toktyp = DATETIME;
+  toktyp = DATETIME;
   p += 1 + n;
   char tzsign;
   int tzhour, tzminute;
@@ -1776,7 +1766,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   if (n == 0) {
     goto done; // datetime only
   }
-  tok->toktyp = DATETIMETZ;
+  toktyp = DATETIMETZ;
   p += n;
   if (!(0 <= tzminute && tzminute <= 60)) {
     return ERROR(sp->ebuf, lineno, "invalid timezone");
@@ -1785,8 +1775,10 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   goto done; // datetimetz
 
 done:
-  tok->str.len = p - sp->cur;
-  sp->cur = p;
+  *tok = mktoken(sp, toktyp);
+  n = p - buffer;
+  tok->str.len = n;
+  sp->cur += n;
 
   tok->u.tsval.year = year;
   tok->u.tsval.month = month;
@@ -1828,101 +1820,119 @@ done:
   return 0;
 }
 
-static int scan_float(scanner_t *sp, token_t *tok) {
-  char buffer[30]; // need to accomodate "9_007_199_254_740_991.0"
-  int lineno = sp->lineno;
-  *tok = mktoken(sp, FLOAT);
-  const char *p = tok->str.ptr;
-  int n;
-  p = sp->cur;
-  p += (*p == '+' || *p == '-') ? 1 : 0;
-  if (0 == memcmp(p, "nan", 3) || (0 == memcmp(p, "inf", 3))) {
-    p += 3;
-    n = p - sp->cur;
-    memcpy(buffer, sp->cur, n);
-    buffer[n] = 0;
-    goto done;
-  }
-  const char *span = "_0123456789";
-  p += strspn(p, span);
-  if (*p == '.') {
-    p++;
-    p += strspn(p, span);
-  }
-  if (*p == 'E' || *p == 'e') {
-    p++;
-    p += (*p == '+' || *p == '-') ? 1 : 0;
-    p += strspn(p, span);
+static int process_numstr(char *buffer, int base, const char **reason) {
+  // squeeze out _
+  char *q = strchr(buffer, '_');
+  if (q) {
+    for (int i = q - buffer; buffer[i]; i++) {
+      if (buffer[i] != '_') {
+        *q++ = buffer[i];
+        continue;
+      }
+      int left = (i == 0) ? 0 : buffer[i - 1];
+      int right = buffer[i + 1];
+      if (!isdigit(left) && !(base == 16 && is_hex_char(left))) {
+        *reason = "underscore only allowed between digits";
+        return -1;
+      }
+      if (!isdigit(right) && !(base == 16 && is_hex_char(right))) {
+        *reason = "underscore only allowed between digits";
+        return -1;
+      }
+    }
+    *q = 0;
   }
 
-  n = p - sp->cur;
-  if (n == 0 || (n == 1 && (*sp->cur == '+' || *sp->cur == '-'))) {
-    return ERROR(sp->ebuf, lineno, "invalid float number");
-  }
-  if (n >= (int)sizeof(buffer) - 1) {
-    return ERROR(sp->ebuf, lineno, "float token is too long");
-  }
-  // copy into buffer
-  memcpy(buffer, sp->cur, n);
-  buffer[n] = 0;
-
-  // squeeze out the _
-  char *q = buffer;
-  for (int i = 0; i < n; i++) {
-    if (buffer[i] != '_') {
-      *q++ = buffer[i];
-      continue;
-    }
-    if (i == 0 || !isdigit(buffer[i - 1])) {
-      return ERROR(sp->ebuf, lineno, "underscore only allowed between digits");
-    }
-    if (i + 1 == n || !isdigit(buffer[i + 1])) {
-      return ERROR(sp->ebuf, lineno, "underscore only allowed between digits");
-    }
-  }
-  *q = 0;
-
+  // decimal points must be surrounded by digits. Also, convert to lowercase.
   for (int i = 0; buffer[i]; i++) {
     if (buffer[i] == '.') {
       if (i == 0 || !isdigit(buffer[i - 1]) || !isdigit(buffer[i + 1])) {
-        return ERROR(sp->ebuf, lineno,
-                     "decimal point must be surrounded by digits");
+        *reason = "decimal point must be surrounded by digits";
+        return -1;
+      }
+    } else if ('A' <= buffer[i] && buffer[i] <= 'Z') {
+      buffer[i] = tolower(buffer[i]);
+    }
+  }
+
+  if (base == 10) {
+    // check for leading 0:  '+01' is an error!
+    q = buffer;
+    q += (*q == '+' || *q == '-') ? 1 : 0;
+    if (q[0] == '0' && isdigit(q[1])) {
+      *reason = "leading 0 in numbers";
+      return -1;
+    }
+
+    // 1e+01 is also an error
+    if (0 != (q = strchr(buffer, 'e'))) {
+      q += (*q == '+' || *q == '-') ? 1 : 0;
+      if (q[0] == '0' && isdigit(q[1])) {
+        *reason = "leading 0 in numbers";
+        return -1;
       }
     }
   }
 
-  // check for leading 0:  '+01' is an error!
-  q = buffer;
-  q += (*q == '+' || *q == '-') ? 1 : 0;
-  if (q[0] == '0' && isdigit(q[1])) {
-    return ERROR(sp->ebuf, lineno, "leading 0 in numbers");
+  return 0;
+}
+
+static int scan_float(scanner_t *sp, token_t *tok) {
+  char buffer[50]; // need to accomodate "9_007_199_254_740_991.0"
+  int len = sp->endp - sp->cur;
+  if (len >= (int)sizeof(buffer)) {
+    len = sizeof(buffer) - 1;
+  }
+  memcpy(buffer, sp->cur, len);
+  buffer[len] = 0; // NUL
+
+  int lineno = sp->lineno;
+  char *p = buffer;
+  p += (*p == '+' || *p == '-') ? 1 : 0;
+  if (0 == memcmp(p, "nan", 3) || (0 == memcmp(p, "inf", 3))) {
+    p += 3;
+  } else {
+    p += strspn(p, "_0123456789eE.+-");
+  }
+  len = p - buffer;
+  buffer[len] = 0;
+
+  const char *reason;
+  if (process_numstr(buffer, 10, &reason)) {
+    return ERROR(sp->ebuf, lineno, reason);
   }
 
-done:
   errno = 0;
+  char *q;
   double fp64 = strtod(buffer, &q);
-  if (errno || *q) {
+  if (errno || *q || q == buffer) {
     return ERROR(sp->ebuf, lineno, "error parsing float");
   }
-  tok->str.len = p - tok->str.ptr;
-  sp->cur = p;
 
+  *tok = mktoken(sp, FLOAT);
   tok->u.fp64 = fp64;
+  tok->str.len = len;
+  sp->cur += len;
   return 0;
 }
 
 static int scan_number(scanner_t *sp, token_t *tok) {
-  char buffer[30]; // need to accomodate "9_007_199_254_740_991.0"
-  int lineno = sp->lineno;
-  *tok = mktoken(sp, INTEGER);
-  const char *p = sp->cur;
-  int n;
-  int64_t val = 0;
+  const char *reason;
+  char buffer[50]; // need to accomodate "9_007_199_254_740_991.0"
+  int len = sp->endp - sp->cur;
+  if (len >= (int)sizeof(buffer)) {
+    len = sizeof(buffer) - 1;
+  }
+  memcpy(buffer, sp->cur, len);
+  buffer[len] = 0; // NUL
 
+  char *p = buffer;
+  char *q = buffer + len;
+  int lineno = sp->lineno;
   // process %0x, %0o or %0b integers
-  if (*p == '0') {
-    int base = 0;
+  if (p[0] == '0') {
     const char *span = 0;
+    int base = 0;
     switch (p[1]) {
     case 'x':
       base = 16;
@@ -1939,109 +1949,78 @@ static int scan_number(scanner_t *sp, token_t *tok) {
     }
     if (base) {
       p += 2;
-      n = strspn(p, span);
-      p += n;
-      if (n == 0) {
-        return ERROR(sp->ebuf, lineno, "invalid integer");
-      };
-      if (n >= (int)sizeof(buffer) - 1) {
-        return ERROR(sp->ebuf, lineno, "integer token is too long");
-      }
-      // copy into buffer
-      memcpy(buffer, sp->cur + 2, n);
-      buffer[n] = 0;
+      p += strspn(p, span);
+      len = p - buffer;
+      buffer[len] = 0;
 
-      // make sure _ are proper
-      if (buffer[0] == '_' || buffer[n - 1] == '_' || strstr(buffer, "__")) {
-        return ERROR(sp->ebuf, lineno,
-                     "underscore only allowed between digits");
+      if (process_numstr(buffer + 2, base, &reason)) {
+        return ERROR(sp->ebuf, lineno, reason);
       }
-      // squeeze out the _
-      char *q = buffer;
-      for (int i = 0; i < n; i++) {
-        if (buffer[i] != '_') {
-          *q++ = buffer[i];
-        }
-      }
-      *q = 0;
 
       // use strtoll to obtain the value
+      *tok = mktoken(sp, INTEGER);
       errno = 0;
-      val = strtoll(buffer, &q, base);
-      if (errno || *q) {
+      tok->u.int64 = strtoll(buffer + 2, &q, base);
+      if (errno || *q || q == buffer + 2) {
         return ERROR(sp->ebuf, lineno, "error parsing integer");
       }
-      goto done;
+      tok->str.len = len;
+      sp->cur += len;
+      return 0;
     }
   }
 
-  // Process integer or float
-  p += (*p == '+' || *p == '-') ? 1 : 0;
-  p += strspn(p, "_0123456789");
-  n = p - sp->cur;
-  if (n == 0 || (n == 1 && (*sp->cur == '+' || *sp->cur == '-'))) {
-    return scan_float(sp, tok); // try to fit a float
+  // handle inf/nan
+  if (*p == '+' || *p == '-') {
+    p++;
   }
-  if (*p && strchr(".eE", *p)) {
-    return scan_float(sp, tok); // try to fit a float
-  }
-  if (n >= (int)sizeof(buffer) - 1) {
-    return ERROR(sp->ebuf, lineno, "integer token is too long");
-  }
-  // copy into buffer
-  memcpy(buffer, sp->cur, n);
-  buffer[n] = 0;
-
-  // squeeze out the _
-  char *q = buffer;
-  for (int i = 0; i < n; i++) {
-    if (buffer[i] != '_') {
-      *q++ = buffer[i];
-      continue;
-    }
-    if (i == 0 || !isdigit(buffer[i - 1])) {
-      return ERROR(sp->ebuf, lineno, "underscore only allowed between digits");
-    }
-    if (i + 1 == n || !isdigit(buffer[i + 1])) {
-      return ERROR(sp->ebuf, lineno, "underscore only allowed between digits");
-    }
-  }
-  *q = 0;
-
-  // check for leading 0 in integer:  '+01' is an error!
-  q = buffer;
-  q += (*q == '+' || *q == '-') ? 1 : 0;
-  if (q[0] == '0' && q[1]) {
-    return ERROR(sp->ebuf, lineno, "leading 0 in numbers");
+  if (*p == 'i' || *p == 'n') {
+    return scan_float(sp, tok);
   }
 
-  // use strtoll to obtain the value
+  // regular int or float
+  p = buffer;
+  p += strspn(p, "0123456789_+-.eE");
+  len = p - buffer;
+  buffer[len] = 0;
+
+  if (process_numstr(buffer, 10, &reason)) {
+    return ERROR(sp->ebuf, lineno, reason);
+  }
+
+  *tok = mktoken(sp, INTEGER);
   errno = 0;
-  val = strtoll(buffer, &q, 0);
-  if (errno || *q) {
-    return ERROR(sp->ebuf, lineno, "bad integer");
+  tok->u.int64 = strtol(buffer, &q, 10);
+  if (errno || *q || q == buffer) {
+    if (*q && strchr(".eE", *q)) {
+      return scan_float(sp, tok); // try to fit a float
+    }
+    return ERROR(sp->ebuf, lineno, "error parsing integer");
   }
 
-done:
-  tok->str.len = p - sp->cur;
-  sp->cur = p;
-
-  tok->u.int64 = val;
+  tok->str.len = len;
+  sp->cur += len;
   return 0;
 }
 
 static int scan_bool(scanner_t *sp, token_t *tok) {
+  char buffer[10];
+  int len = sp->endp - sp->cur;
+  if (len >= (int)sizeof(buffer)) {
+    len = sizeof(buffer) - 1;
+  }
+  memcpy(buffer, sp->cur, len);
+  buffer[len] = 0; // NUL
+
   int lineno = sp->lineno;
-  *tok = mktoken(sp, BOOL);
-  const char *p = sp->cur;
   bool val = false;
-  // scan for true or false
-  if (0 == memcmp(p, "true", 4)) {
-    p += 4;
+  const char *p = buffer;
+  if (0 == strncmp(p, "true", 4)) {
     val = true;
-  } else if (0 == memcmp(p, "false", 5)) {
-    p += 5;
+    p += 4;
+  } else if (0 == strncmp(p, "false", 5)) {
     val = false;
+    p += 5;
   } else {
     return ERROR(sp->ebuf, lineno, "invalid boolean value");
   }
@@ -2049,47 +2028,56 @@ static int scan_bool(scanner_t *sp, token_t *tok) {
     return ERROR(sp->ebuf, lineno, "invalid boolean value");
   }
 
-  tok->str.len = p - tok->str.ptr;
-  sp->cur = p;
-
+  len = p - buffer;
+  *tok = mktoken(sp, BOOL);
   tok->u.b1 = val;
+  tok->str.len = len;
+  sp->cur += len;
   return 0;
 }
 
 static inline bool scan_check_time(scanner_t *sp) {
   const char *p = sp->cur;
-  return isdigit(p[0]) && isdigit(p[1]) && p[2] == ':';
+  return p + 2 < sp->endp && isdigit(p[0]) && isdigit(p[1]) && p[2] == ':';
 }
 
 static inline bool scan_check_date(scanner_t *sp) {
   const char *p = sp->cur;
-  return isdigit(p[0]) && isdigit(p[1]) && isdigit(p[2]) && isdigit(p[3]) &&
-         p[4] == '-';
+  return p + 4 < sp->endp && isdigit(p[0]) && isdigit(p[1]) && isdigit(p[2]) &&
+         isdigit(p[3]) && p[4] == '-';
 }
 
-static bool scan_check_bool(scanner_t *sp) {
+static inline bool scan_check_bool(scanner_t *sp) {
   const char *p = sp->cur;
-  return 0 == strncmp(p, "true", 4) || 0 == strncmp(p, "false", 5);
+  return p < sp->endp && (*p == 't' || *p == 'f');
 }
 
 static bool scan_check_number(scanner_t *sp) {
   const char *p = sp->cur;
-  if (p[0] == '0') {
+  if (p + 1 < sp->endp) {
     // 0x, 0o or 0b
-    if (p[1] && strchr("xob", p[1])) {
+    if (p[0] == '0' && p[1] && strchr("xob", p[1])) {
       return true;
     }
   }
-  if (*p == '+' || *p == '-') {
-    p++;
+  if (p < sp->endp) {
+    if (*p == '+' || *p == '-') {
+      return true;
+    }
+    if (isdigit(*p) || *p == '_' || *p == '.') {
+      return true;
+    }
   }
-  if (isdigit(*p) || *p == '_' || *p == '.') {
-    return true;
+  if (p + 3 < sp->endp) {
+    if (0 == strncmp(p, "nan", 3) || 0 == strncmp(p, "inf", 3)) {
+      return true;
+    }
   }
-  return (0 == strncmp(p, "nan", 3) || 0 == strncmp(p, "inf", 3));
+  return false;
 }
 
-static int scan_atomic(scanner_t *sp, token_t *tok) {
+// scan a literal that is not a string
+static int scan_nonstring_literal(scanner_t *sp, token_t *tok) {
   int lineno = sp->lineno;
   if (scan_check_time(sp)) {
     *tok = mktoken(sp, TIME);
@@ -2131,8 +2119,9 @@ static int scan_atomic(scanner_t *sp, token_t *tok) {
 static int scan_literal(scanner_t *sp, token_t *tok) {
   *tok = mktoken(sp, LIT);
   const char *p = sp->cur;
-  while (isalnum(*p) || *p == '_' || *p == '-')
+  while (p < sp->endp && (isalnum(*p) || *p == '_' || *p == '-')) {
     p++;
+  }
   tok->str.len = p - tok->str.ptr;
   sp->cur = p;
   return 0;
@@ -2241,7 +2230,7 @@ again:
 
   default:
     sp->cur--;
-    if (keymode ? scan_literal(sp, tok) : scan_atomic(sp, tok)) {
+    if (keymode ? scan_literal(sp, tok) : scan_nonstring_literal(sp, tok)) {
       return -1;
     }
     break;

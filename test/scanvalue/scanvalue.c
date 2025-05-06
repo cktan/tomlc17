@@ -126,6 +126,7 @@ int main(int argc, const char *argv[]) {
     (void)scan_key; // silent compiler
     token_t tok;
     if (scan_value(sp, &tok)) {
+      printf("%s\n", errbuf);
       return -1;
     }
     if (tok.toktyp == FIN) {
