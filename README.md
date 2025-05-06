@@ -7,7 +7,9 @@ TOML in c99, c17; v1.0 compliant.
 
 ## Usage
 
-See `tomlc17.h` for details. 
+See
+[tomlc17.h](https://github.com/cktan/tomlc17/blob/main/src/tomlc17.h)
+for details.
 
 Parsing a toml document creates a tree data structure in memory that
 reflects the document. Information can be extracted by navigating this
