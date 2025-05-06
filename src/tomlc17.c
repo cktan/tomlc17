@@ -259,9 +259,11 @@ static int arr_add(toml_datum_t *arr, toml_datum_t newelem,
 }
 
 // ------------------- parser section
-static int parse_expr(parser_t *pp);
 static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span);
-static int parse_val(parser_t *pp, toml_datum_t *ret);
+static int parse_val(parser_t *pp, token_t tok, toml_datum_t *ret);
+static int parse_keyvalue_expr(parser_t *pp, token_t tok);
+static int parse_std_table_expr(parser_t *pp, token_t tok);
+static int parse_array_table_expr(parser_t *pp, token_t tok);
 
 static toml_datum_t mkdatum(toml_type_t ty) {
   toml_datum_t ret = {0};
@@ -449,7 +451,6 @@ toml_result_t toml_parse(const char *src, int len) {
 
   // Keep parsing until FIN
   for (;;) {
-    scanner_state_t mark = scan_mark(&pp->scanner);
     token_t tok;
     if (scan_key(&pp->scanner, &tok)) {
       goto bail;
@@ -458,14 +459,25 @@ toml_result_t toml_parse(const char *src, int len) {
     if (tok.toktyp == FIN) {
       break;
     }
-    // skip blank lines
-    if (tok.toktyp == ENDL) {
+    switch (tok.toktyp) {
+    case ENDL: // skip blank lines
       continue;
-    }
-    // non-blank line: parse an expression
-    scan_restore(&pp->scanner, mark);
-    if (parse_expr(pp)) {
-      goto bail;
+    case LBRACK:
+      if (parse_std_table_expr(pp, tok)) {
+	goto bail;
+      }
+      break;
+    case LLBRACK:
+      if (parse_array_table_expr(pp, tok)) {
+	goto bail;
+      }
+      break;
+    default:
+      // non-blank line: parse an expression
+      if (parse_keyvalue_expr(pp, tok)) {
+	goto bail;
+      }
+      break;
     }
     // each expression must be followed by newline
     if (scan_key(&pp->scanner, &tok)) {
@@ -583,15 +595,11 @@ static int token_to_boolean(parser_t *pp, token_t tok, toml_datum_t *ret) {
 }
 
 // Scan a multipart key. Return 0 on success, -1 otherwise.
-static int parse_key(parser_t *pp, keypart_t *ret_keypart, int *keylineno) {
+static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart, int *keylineno) {
   ret_keypart->nspan = 0;
   // key = simple-key | dotted_key
   // simple-key = STRING | LITSTRING | LIT
   // dotted-key = simple-key (DOT simple-key)+
-  token_t tok;
-  if (scan_key(&pp->scanner, &tok)) {
-    return -1;
-  }
   *keylineno = tok.lineno;
   if (tok.toktyp != STRING && tok.toktyp != LITSTRING && tok.toktyp != LIT) {
     return ERROR(pp->ebuf, tok.lineno, "missing key");
@@ -734,18 +742,15 @@ static void set_flag_recursive(toml_datum_t *datum, uint32_t flag) {
 }
 
 // Parse an inline array.
-// Note: the RBRACK has already been consumed by the caller.
-static int parse_inline_array(parser_t *pp, toml_datum_t *ret_datum) {
+static int parse_inline_array(parser_t *pp, token_t tok, toml_datum_t *ret_datum) {
+  assert(tok.toktyp == LBRACK);
   *ret_datum = mkdatum(TOML_ARRAY);
-  token_t tok;
   int need_comma = 0;
 
   // loop until RBRACK
   for (;;) {
     // skip ENDL
-    scanner_state_t mark;
     do {
-      mark = scan_mark(&pp->scanner);
       if (scan_value(&pp->scanner, &tok)) {
         return -1;
       }
@@ -773,13 +778,11 @@ static int parse_inline_array(parser_t *pp, toml_datum_t *ret_datum) {
     }
 
     // This is a valid value!
-    // Restore mark so we can call parse_val() for the value.
-    scan_restore(&pp->scanner, mark);
 
     // Parse the value.
     const char *reason;
     toml_datum_t elem;
-    if (parse_val(pp, &elem)) {
+    if (parse_val(pp, tok, &elem)) {
       return -1;
     }
 
@@ -798,16 +801,14 @@ static int parse_inline_array(parser_t *pp, toml_datum_t *ret_datum) {
 }
 
 // Parse an inline table.
-// Note: the RBRACE has already been consumed by the caller.
-static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
+static int parse_inline_table(parser_t *pp, token_t tok, toml_datum_t *ret_datum) {
+  assert(tok.toktyp == LBRACE);
   *ret_datum = mkdatum(TOML_TABLE);
-  token_t tok;
   bool need_comma = 0;
   bool was_comma = 0;
 
   // loop until RBRACE
   for (;;) {
-    scanner_state_t mark = scan_mark(&pp->scanner);
     if (scan_key(&pp->scanner, &tok)) {
       return -1;
     }
@@ -839,11 +840,10 @@ static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
       return ERROR(pp->ebuf, tok.lineno, "unexpected newline");
     }
 
-    // Obtain the key.
+    // Get the keyparts
     keypart_t keypart = {0};
     int keylineno;
-    scan_restore(&pp->scanner, mark);
-    if (parse_key(pp, &keypart, &keylineno)) {
+    if (parse_key(pp, tok, &keypart, &keylineno)) {
       return -1;
     }
 
@@ -876,8 +876,11 @@ static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
     }
 
     // obtain the value
+    if (scan_value(&pp->scanner, &tok)) {
+      return -1;
+    }
     toml_datum_t value;
-    if (parse_val(pp, &value)) {
+    if (parse_val(pp, tok, &value)) {
       return -1;
     }
 
@@ -894,12 +897,8 @@ static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
 }
 
 // Parse a value.
-static int parse_val(parser_t *pp, toml_datum_t *ret) {
+static int parse_val(parser_t *pp, token_t tok, toml_datum_t *ret) {
   // val = string / boolean / array / inline-table / date-time / float / integer
-  token_t tok;
-  if (scan_value(&pp->scanner, &tok)) {
-    return -1;
-  }
   switch (tok.toktyp) {
   case STRING:
   case MLSTRING:
@@ -921,9 +920,9 @@ static int parse_val(parser_t *pp, toml_datum_t *ret) {
   case BOOL:
     return token_to_boolean(pp, tok, ret);
   case LBRACK: // inline-array
-    return parse_inline_array(pp, ret);
+    return parse_inline_array(pp, tok, ret);
   case LBRACE: // inline-table
-    return parse_inline_table(pp, ret);
+    return parse_inline_table(pp, tok, ret);
   default:
     break;
   }
@@ -933,18 +932,19 @@ static int parse_val(parser_t *pp, toml_datum_t *ret) {
 // Parse a standard table expression, and set the curtab of the parser
 // to the table referenced.  A standard table expression is a line
 // like [a.b.c.d].
-static int parse_std_table_expr(parser_t *pp) {
+static int parse_std_table_expr(parser_t *pp, token_t tok) {
+  // std-table = [ key ]
   // Eat the [
-  token_t tok;
+  assert(tok.toktyp == LBRACK);  // [ ate by caller
+
+  // Read the first keypart
   if (scan_key(&pp->scanner, &tok)) {
     return -1;
   }
-  assert(tok.toktyp == LBRACK);
-
   // Extract the keypart[]
   int keylineno;
   keypart_t keypart;
-  if (parse_key(pp, &keypart, &keylineno)) {
+  if (parse_key(pp, tok, &keypart, &keylineno)) {
     return -1;
   }
 
@@ -1015,22 +1015,20 @@ static int parse_std_table_expr(parser_t *pp) {
   return 0;
 }
 
-// Parse an array table expression, and set the curab of the parser
+// Parse an array table expression, and set the curtab of the parser
 // to the table referenced. A standard array table expresison is a line
 // like [[a.b.c.d]].
-static int parse_array_table_expr(parser_t *pp) {
-  // parse array-table expr
-  // e.g. [[a.b.c]]
-  // eat the [[
-  token_t tok;
+static int parse_array_table_expr(parser_t *pp, token_t tok) {
+  // array-table = [[ key ]]
+  assert(tok.toktyp == LLBRACK);  // [[ ate by caller
+
+  // Read the first keypart
   if (scan_key(&pp->scanner, &tok)) {
     return -1;
   }
-  assert(tok.toktyp == LLBRACK);
-
   int keylineno;
   keypart_t keypart;
-  if (parse_key(pp, &keypart, &keylineno)) {
+  if (parse_key(pp, tok, &keypart, &keylineno)) {
     return -1;
   }
 
@@ -1128,33 +1126,15 @@ static int parse_array_table_expr(parser_t *pp) {
 }
 
 // Parse an expression. A toml doc is just a list of expressions.
-static int parse_expr(parser_t *pp) {
-  // table = std-table | array-table
-  // std-table = [ key ]
-  // array-table = [[ key ]]
-  scanner_state_t mark = scan_mark(&pp->scanner);
-  token_t tok;
-  if (scan_key(&pp->scanner, &tok)) {
-    return -1;
-  }
-  scan_restore(&pp->scanner, mark);
-  if (tok.toktyp == LLBRACK) {
-    return parse_array_table_expr(pp);
-  }
-  if (tok.toktyp == LBRACK) {
-    return parse_std_table_expr(pp);
-  }
-
+static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
   // Obtain the key
-  // expression = keyval
-  // keyval = key keyval-sep val
   int keylineno;
   keypart_t keypart;
-  if (parse_key(pp, &keypart, &keylineno)) {
+  if (parse_key(pp, tok, &keypart, &keylineno)) {
     return -1;
   }
 
-  // match the '-'
+  // match the '='
   if (scan_key(&pp->scanner, &tok)) {
     return -1;
   }
@@ -1163,8 +1143,11 @@ static int parse_expr(parser_t *pp) {
   }
 
   // Obtain the value
+  if (scan_value(&pp->scanner, &tok)) {
+    return -1;
+  }
   toml_datum_t val;
-  if (parse_val(pp, &val)) {
+  if (parse_val(pp, tok, &val)) {
     return -1;
   }
 
