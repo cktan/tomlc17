@@ -734,13 +734,10 @@ static void set_flag_recursive(toml_datum_t *datum, uint32_t flag) {
 }
 
 // Parse an inline array.
+// Note: the RBRACK has already been consumed by the caller.
 static int parse_inline_array(parser_t *pp, toml_datum_t *ret_datum) {
   *ret_datum = mkdatum(TOML_ARRAY);
   token_t tok;
-  if (scan_value(&pp->scanner, &tok)) {
-    return -1;
-  }
-  assert(tok.toktyp == LBRACK);
   int need_comma = 0;
 
   // loop until RBRACK
@@ -801,13 +798,10 @@ static int parse_inline_array(parser_t *pp, toml_datum_t *ret_datum) {
 }
 
 // Parse an inline table.
+// Note: the RBRACE has already been consumed by the caller.
 static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
   *ret_datum = mkdatum(TOML_TABLE);
   token_t tok;
-  if (scan_value(&pp->scanner, &tok)) {
-    return -1;
-  }
-  assert(tok.toktyp == LBRACE);
   bool need_comma = 0;
   bool was_comma = 0;
 
@@ -902,7 +896,6 @@ static int parse_inline_table(parser_t *pp, toml_datum_t *ret_datum) {
 // Parse a value.
 static int parse_val(parser_t *pp, toml_datum_t *ret) {
   // val = string / boolean / array / inline-table / date-time / float / integer
-  scanner_state_t mark = scan_mark(&pp->scanner);
   token_t tok;
   if (scan_value(&pp->scanner, &tok)) {
     return -1;
@@ -928,14 +921,13 @@ static int parse_val(parser_t *pp, toml_datum_t *ret) {
   case BOOL:
     return token_to_boolean(pp, tok, ret);
   case LBRACK: // inline-array
-    scan_restore(&pp->scanner, mark);
     return parse_inline_array(pp, ret);
   case LBRACE: // inline-table
-    scan_restore(&pp->scanner, mark);
     return parse_inline_table(pp, ret);
   default:
-    return ERROR(pp->ebuf, tok.lineno, "missing value");
+    break;
   }
+  return ERROR(pp->ebuf, tok.lineno, "missing value");
 }
 
 // Parse a standard table expression, and set the curtab of the parser
