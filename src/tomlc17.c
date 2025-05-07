@@ -346,6 +346,23 @@ void toml_free(toml_result_t result) {
 /**
  *  Parse a toml document.
  */
+toml_result_t toml_parse_file_ex(const char* fname) {
+  toml_result_t result = {0};
+  FILE* fp = fopen(fname, "r");
+  if (!fp) {
+    snprintf(result.errmsg, sizeof(result.errmsg),
+	     "fopen: %s", fname);
+    return result;
+  }
+  result = toml_parse_file(fp);
+  fclose(fp);
+  return result;
+}
+
+
+/**
+ *  Parse a toml document.
+ */
 toml_result_t toml_parse_file(FILE *fp) {
   toml_result_t result = {0};
   int bufsz = 0;
