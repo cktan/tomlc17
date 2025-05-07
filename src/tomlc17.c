@@ -19,6 +19,11 @@ static toml_option_t toml_option = {0, malloc, free, realloc};
 #define FREE(p) toml_option.mem_free(p)
 #define REALLOC(p, n) toml_option.mem_realloc(p, n)
 
+#define DO(x)                                                                  \
+  if (x)                                                                       \
+    return -1;                                                                 \
+  else                                                                         \
+    (void)0;
 /*
  *  Error buffer
  */
@@ -63,6 +68,9 @@ static pool_t *pool_create(int N) {
   }
   int totalsz = sizeof(pool_t) + N;
   pool_t *pool = MALLOC(totalsz);
+  if (!pool) {
+    return NULL;
+  }
   memset(pool, 0, totalsz);
   pool->max = N;
   return pool;
@@ -184,6 +192,7 @@ static int scan_value(scanner_t *sp, token_t *tok);
 static scanner_state_t scan_mark(scanner_t *sp);
 static void scan_restore(scanner_t *sp, scanner_state_t state);
 
+// Parser object
 typedef struct parser_t parser_t;
 struct parser_t {
   scanner_t scanner;
@@ -209,7 +218,6 @@ static int tab_find(toml_datum_t *tab, span_t key) {
 // On error, reason will point to an error message.
 static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
                    const char **reason) {
-
   // Check for duplicate key
   int nkey = tab->u.tab.size;
   for (int i = 0; i < nkey; i++) {
@@ -346,19 +354,17 @@ void toml_free(toml_result_t result) {
 /**
  *  Parse a toml document.
  */
-toml_result_t toml_parse_file_ex(const char* fname) {
+toml_result_t toml_parse_file_ex(const char *fname) {
   toml_result_t result = {0};
-  FILE* fp = fopen(fname, "r");
+  FILE *fp = fopen(fname, "r");
   if (!fp) {
-    snprintf(result.errmsg, sizeof(result.errmsg),
-	     "fopen: %s", fname);
+    snprintf(result.errmsg, sizeof(result.errmsg), "fopen: %s", fname);
     return result;
   }
   result = toml_parse_file(fp);
   fclose(fp);
   return result;
 }
-
 
 /**
  *  Parse a toml document.
@@ -521,20 +527,18 @@ bail:
   return result;
 }
 
-// Convert a (LITSTRING, LIT, MLLITSTRING, MLSTRING, or STRING) in tok to a
+// Convert a (LITSTRING, LIT, MLLITSTRING, MLSTRING, or STRING) token to a
 // datum.
 static int token_to_string(parser_t *pp, token_t tok, toml_datum_t *ret) {
   *ret = mkdatum(TOML_STRING);
   span_t span;
-  if (parse_norm(pp, tok, &span)) {
-    return -1;
-  }
+  DO(parse_norm(pp, tok, &span));
   ret->u.str.ptr = (char *)span.ptr;
   ret->u.str.len = span.len;
   return 0;
 }
 
-// Convert TIME in tok to a datum.
+// Convert TIME token to a datum.
 static int token_to_time(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
   *ret = mkdatum(TOML_TIME);
@@ -545,7 +549,7 @@ static int token_to_time(parser_t *pp, token_t tok, toml_datum_t *ret) {
   return 0;
 }
 
-// Convert a DATE in tok to a datum.
+// Convert a DATE token to a datum.
 static int token_to_date(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
   *ret = mkdatum(TOML_DATE);
@@ -555,7 +559,7 @@ static int token_to_date(parser_t *pp, token_t tok, toml_datum_t *ret) {
   return 0;
 }
 
-// Convert a DATETIME in tok to a datum.
+// Convert a DATETIME token to a datum.
 static int token_to_datetime(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
   *ret = mkdatum(TOML_DATETIME);
@@ -569,7 +573,7 @@ static int token_to_datetime(parser_t *pp, token_t tok, toml_datum_t *ret) {
   return 0;
 }
 
-// Convert a DATETIMETZ in tok to a datum.
+// Convert a DATETIMETZ token to a datum.
 static int token_to_datetimetz(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
   *ret = mkdatum(TOML_DATETIMETZ);
@@ -584,7 +588,7 @@ static int token_to_datetimetz(parser_t *pp, token_t tok, toml_datum_t *ret) {
   return 0;
 }
 
-// Convert an int64 in tok to a datum.
+// Convert an int64 token to a datum.
 static int token_to_int64(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
   assert(tok.toktyp == INTEGER);
@@ -593,7 +597,7 @@ static int token_to_int64(parser_t *pp, token_t tok, toml_datum_t *ret) {
   return 0;
 }
 
-// Convert a fp64 in tok to a datum.
+// Convert a fp64 token to a datum.
 static int token_to_fp64(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
   assert(tok.toktyp == FLOAT);
@@ -602,7 +606,7 @@ static int token_to_fp64(parser_t *pp, token_t tok, toml_datum_t *ret) {
   return 0;
 }
 
-// Convert a boolean in tok to a datum.
+// Convert a boolean token to a datum.
 static int token_to_boolean(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
   assert(tok.toktyp == BOOL);
@@ -611,7 +615,7 @@ static int token_to_boolean(parser_t *pp, token_t tok, toml_datum_t *ret) {
   return 0;
 }
 
-// Scan a multipart key. Return 0 on success, -1 otherwise.
+// Parse a multipart key. Return 0 on success, -1 otherwise.
 static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart,
                      int *keylineno) {
   ret_keypart->nspan = 0;
@@ -638,9 +642,7 @@ static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart,
     scanner_state_t mark = scan_mark(&pp->scanner);
 
     // Eat the dot if it is there
-    if (scan_key(&pp->scanner, &tok)) {
-      return -1;
-    }
+    DO(scan_key(&pp->scanner, &tok));
 
     // If not a dot, we are done with keyparts.
     if (tok.toktyp != DOT) {
@@ -649,9 +651,8 @@ static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart,
     }
 
     // Scan the n-th key
-    if (scan_key(&pp->scanner, &tok)) {
-      return -1;
-    }
+    DO(scan_key(&pp->scanner, &tok));
+
     if (tok.toktyp != STRING && tok.toktyp != LITSTRING && tok.toktyp != LIT) {
       return ERROR(pp->ebuf, tok.lineno, "expects a string in dotted-key");
     }
@@ -661,10 +662,7 @@ static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart,
     }
 
     // Normalize the n-th key.
-    if (parse_norm(pp, tok, &kpspan[n])) {
-      return ERROR(pp->ebuf, tok.lineno,
-                   "unable to normalize string; probably a unicode issue");
-    }
+    DO(parse_norm(pp, tok, &kpspan[n]));
     n++;
   }
 
@@ -770,9 +768,7 @@ static int parse_inline_array(parser_t *pp, token_t tok,
   for (;;) {
     // skip ENDL
     do {
-      if (scan_value(&pp->scanner, &tok)) {
-        return -1;
-      }
+      DO(scan_value(&pp->scanner, &tok));
     } while (tok.toktyp == ENDL);
 
     // If got an RBRACK: done!
@@ -801,9 +797,7 @@ static int parse_inline_array(parser_t *pp, token_t tok,
     // Parse the value.
     const char *reason;
     toml_datum_t elem;
-    if (parse_val(pp, tok, &elem)) {
-      return -1;
-    }
+    DO(parse_val(pp, tok, &elem));
 
     // Add the value to the array.
     if (arr_add(ret_datum, elem, &reason)) {
@@ -829,9 +823,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
 
   // loop until RBRACE
   for (;;) {
-    if (scan_key(&pp->scanner, &tok)) {
-      return -1;
-    }
+    DO(scan_key(&pp->scanner, &tok));
 
     // Got an RBRACE: done!
     if (tok.toktyp == RBRACE) {
@@ -863,9 +855,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     // Get the keyparts
     keypart_t keypart = {0};
     int keylineno;
-    if (parse_key(pp, tok, &keypart, &keylineno)) {
-      return -1;
-    }
+    DO(parse_key(pp, tok, &keypart, &keylineno));
 
     // Descend to one keypart before last
     span_t lastkeypart = keypart.span[--keypart.nspan];
@@ -884,9 +874,8 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     tab->flag |= FLAG_EXPLICIT;
 
     // match EQUAL
-    if (scan_value(&pp->scanner, &tok)) {
-      return -1;
-    }
+    DO(scan_value(&pp->scanner, &tok));
+
     if (tok.toktyp != EQUAL) {
       if (tok.toktyp == ENDL) {
         return ERROR(pp->ebuf, tok.lineno, "unexpected newline");
@@ -896,13 +885,9 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     }
 
     // obtain the value
-    if (scan_value(&pp->scanner, &tok)) {
-      return -1;
-    }
     toml_datum_t value;
-    if (parse_val(pp, tok, &value)) {
-      return -1;
-    }
+    DO(scan_value(&pp->scanner, &tok));
+    DO(parse_val(pp, tok, &value));
 
     // Add the value to tab.
     const char *reason;
@@ -958,20 +943,15 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
   assert(tok.toktyp == LBRACK); // [ ate by caller
 
   // Read the first keypart
-  if (scan_key(&pp->scanner, &tok)) {
-    return -1;
-  }
+  DO(scan_key(&pp->scanner, &tok));
+
   // Extract the keypart[]
   int keylineno;
   keypart_t keypart;
-  if (parse_key(pp, tok, &keypart, &keylineno)) {
-    return -1;
-  }
+  DO(parse_key(pp, tok, &keypart, &keylineno));
 
   // Eat the ]
-  if (scan_key(&pp->scanner, &tok)) {
-    return -1;
-  }
+  DO(scan_key(&pp->scanner, &tok));
   if (tok.toktyp != RBRACK) {
     return ERROR(pp->ebuf, tok.lineno, "missing right-bracket");
   }
@@ -1043,20 +1023,15 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   assert(tok.toktyp == LLBRACK); // [[ ate by caller
 
   // Read the first keypart
-  if (scan_key(&pp->scanner, &tok)) {
-    return -1;
-  }
+  DO(scan_key(&pp->scanner, &tok));
+
   int keylineno;
   keypart_t keypart;
-  if (parse_key(pp, tok, &keypart, &keylineno)) {
-    return -1;
-  }
+  DO(parse_key(pp, tok, &keypart, &keylineno));
 
   // eat the ]]
   token_t rrb;
-  if (scan_key(&pp->scanner, &rrb)) {
-    return -1;
-  }
+  DO(scan_key(&pp->scanner, &rrb));
   if (rrb.toktyp != RRBRACK) {
     return ERROR(pp->ebuf, rrb.lineno, "missing ']]'");
   }
@@ -1150,26 +1125,18 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
   // Obtain the key
   int keylineno;
   keypart_t keypart;
-  if (parse_key(pp, tok, &keypart, &keylineno)) {
-    return -1;
-  }
+  DO(parse_key(pp, tok, &keypart, &keylineno));
 
   // match the '='
-  if (scan_key(&pp->scanner, &tok)) {
-    return -1;
-  }
+  DO(scan_key(&pp->scanner, &tok));
   if (tok.toktyp != EQUAL) {
     return ERROR(pp->ebuf, tok.lineno, "expect '='");
   }
 
   // Obtain the value
-  if (scan_value(&pp->scanner, &tok)) {
-    return -1;
-  }
   toml_datum_t val;
-  if (parse_val(pp, tok, &val)) {
-    return -1;
-  }
+  DO(scan_value(&pp->scanner, &tok));
+  DO(parse_val(pp, tok, &val));
 
   // Locate the last table using keypart[]
   const char *reason;
@@ -2215,23 +2182,17 @@ again:
 
   case '"':
     sp->cur--;
-    if (scan_string(sp, tok)) {
-      return -1;
-    }
+    DO(scan_string(sp, tok));
     break;
 
   case '\'':
     sp->cur--;
-    if (scan_litstring(sp, tok)) {
-      return -1;
-    }
+    DO(scan_litstring(sp, tok));
     break;
 
   default:
     sp->cur--;
-    if (keymode ? scan_literal(sp, tok) : scan_nonstring_literal(sp, tok)) {
-      return -1;
-    }
+    DO(keymode ? scan_literal(sp, tok) : scan_nonstring_literal(sp, tok));
     break;
   }
 

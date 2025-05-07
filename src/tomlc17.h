@@ -84,12 +84,11 @@ TOML_EXTERN toml_result_t toml_parse(const char *src, int len);
  */
 TOML_EXTERN toml_result_t toml_parse_file(FILE *file);
 
-
 /**
  * Parse a toml file. Returns a toml_result which must be freed
  * using toml_free() eventually.
  */
-TOML_EXTERN toml_result_t toml_parse_file_ex(const char* fname);
+TOML_EXTERN toml_result_t toml_parse_file_ex(const char *fname);
 
 /**
  * Release the result.
@@ -124,4 +123,4 @@ TOML_EXTERN toml_option_t toml_default_option(void);
  */
 TOML_EXTERN void toml_set_option(toml_option_t opt);
 
-#endif   // TOMLC17_H
+#endif // TOMLC17_H
