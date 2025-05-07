@@ -1283,7 +1283,7 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       int sz = (p[1] == 'u' ? 4 : 8);
       memcpy(buf, p + 2, sz);
       buf[sz] = 0;
-      int32_t ucs = strtoll(buf, 0, 16);
+      int32_t ucs = strtol(buf, 0, 16);
       if (0xD800 <= ucs && ucs <= 0xDFFF) {
         // explicitly prohibit surrogates (non-scalar unicode code point)
         return ERROR(pp->ebuf, tok.lineno, "invalid UTF8 char \\u%04x", ucs);
@@ -2002,7 +2002,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
 
   *tok = mktoken(sp, INTEGER);
   errno = 0;
-  tok->u.int64 = strtol(buffer, &q, 10);
+  tok->u.int64 = strtoll(buffer, &q, 10);
   if (errno || *q || q == buffer) {
     if (*q && strchr(".eE", *q)) {
       return scan_float(sp, tok); // try to fit a float
