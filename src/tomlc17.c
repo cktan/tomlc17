@@ -2066,19 +2066,8 @@ static inline bool test_bool(const char *p, const char *endp) {
 
 // Check if the next token may be NUMBER
 static bool test_number(const char *p, const char *endp) {
-  if (&p[1] < endp) {
-    // 0x, 0o or 0b
-    if (p[0] == '0' && p[1] && strchr("xob", p[1])) {
-      return true;
-    }
-  }
-  if (&p[0] < endp) {
-    if (*p == '+' || *p == '-') {
-      return true;
-    }
-    if (isdigit(*p) || *p == '_' || *p == '.') {
-      return true;
-    }
+  if (&p[0] < endp && *p && strchr("0123456789+-._", *p)) {
+    return true;
   }
   if (&p[3] < endp) {
     if (0 == memcmp(p, "nan", 3) || 0 == memcmp(p, "inf", 3)) {
