@@ -124,4 +124,4 @@ TOML_EXTERN toml_option_t toml_default_option(void);
  */
 TOML_EXTERN void toml_set_option(toml_option_t opt);
 
-#endif
+#endif   // TOMLC17_H
