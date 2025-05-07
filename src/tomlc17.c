@@ -464,18 +464,18 @@ toml_result_t toml_parse(const char *src, int len) {
       continue;
     case LBRACK:
       if (parse_std_table_expr(pp, tok)) {
-	goto bail;
+        goto bail;
       }
       break;
     case LLBRACK:
       if (parse_array_table_expr(pp, tok)) {
-	goto bail;
+        goto bail;
       }
       break;
     default:
       // non-blank line: parse an expression
       if (parse_keyvalue_expr(pp, tok)) {
-	goto bail;
+        goto bail;
       }
       break;
     }
@@ -595,7 +595,8 @@ static int token_to_boolean(parser_t *pp, token_t tok, toml_datum_t *ret) {
 }
 
 // Scan a multipart key. Return 0 on success, -1 otherwise.
-static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart, int *keylineno) {
+static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart,
+                     int *keylineno) {
   ret_keypart->nspan = 0;
   // key = simple-key | dotted_key
   // simple-key = STRING | LITSTRING | LIT
@@ -742,7 +743,8 @@ static void set_flag_recursive(toml_datum_t *datum, uint32_t flag) {
 }
 
 // Parse an inline array.
-static int parse_inline_array(parser_t *pp, token_t tok, toml_datum_t *ret_datum) {
+static int parse_inline_array(parser_t *pp, token_t tok,
+                              toml_datum_t *ret_datum) {
   assert(tok.toktyp == LBRACK);
   *ret_datum = mkdatum(TOML_ARRAY);
   int need_comma = 0;
@@ -801,7 +803,8 @@ static int parse_inline_array(parser_t *pp, token_t tok, toml_datum_t *ret_datum
 }
 
 // Parse an inline table.
-static int parse_inline_table(parser_t *pp, token_t tok, toml_datum_t *ret_datum) {
+static int parse_inline_table(parser_t *pp, token_t tok,
+                              toml_datum_t *ret_datum) {
   assert(tok.toktyp == LBRACE);
   *ret_datum = mkdatum(TOML_TABLE);
   bool need_comma = 0;
@@ -935,7 +938,7 @@ static int parse_val(parser_t *pp, token_t tok, toml_datum_t *ret) {
 static int parse_std_table_expr(parser_t *pp, token_t tok) {
   // std-table = [ key ]
   // Eat the [
-  assert(tok.toktyp == LBRACK);  // [ ate by caller
+  assert(tok.toktyp == LBRACK); // [ ate by caller
 
   // Read the first keypart
   if (scan_key(&pp->scanner, &tok)) {
@@ -1020,7 +1023,7 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
 // like [[a.b.c.d]].
 static int parse_array_table_expr(parser_t *pp, token_t tok) {
   // array-table = [[ key ]]
-  assert(tok.toktyp == LLBRACK);  // [[ ate by caller
+  assert(tok.toktyp == LLBRACK); // [[ ate by caller
 
   // Read the first keypart
   if (scan_key(&pp->scanner, &tok)) {
@@ -2046,34 +2049,30 @@ static int scan_bool(scanner_t *sp, token_t *tok) {
 }
 
 // Check if the next token may be TIME
-static inline bool scan_check_time(scanner_t *sp) {
-  const char *p = sp->cur;
-  return p + 2 < sp->endp && isdigit(p[0]) && isdigit(p[1]) && p[2] == ':';
+static inline bool test_time(const char *p, const char *endp) {
+  return &p[2] < endp && isdigit(p[0]) && isdigit(p[1]) && p[2] == ':';
 }
 
 // Check if the next token may be DATE
-static inline bool scan_check_date(scanner_t *sp) {
-  const char *p = sp->cur;
-  return p + 4 < sp->endp && isdigit(p[0]) && isdigit(p[1]) && isdigit(p[2]) &&
+static inline bool test_date(const char *p, const char *endp) {
+  return &p[4] < endp && isdigit(p[0]) && isdigit(p[1]) && isdigit(p[2]) &&
          isdigit(p[3]) && p[4] == '-';
 }
 
 // Check if the next token may be BOOL
-static inline bool scan_check_bool(scanner_t *sp) {
-  const char *p = sp->cur;
-  return p < sp->endp && (*p == 't' || *p == 'f');
+static inline bool test_bool(const char *p, const char *endp) {
+  return &p[0] < endp && (*p == 't' || *p == 'f');
 }
 
 // Check if the next token may be NUMBER
-static bool scan_check_number(scanner_t *sp) {
-  const char *p = sp->cur;
-  if (p + 1 < sp->endp) {
+static bool test_number(const char *p, const char *endp) {
+  if (&p[1] < endp) {
     // 0x, 0o or 0b
     if (p[0] == '0' && p[1] && strchr("xob", p[1])) {
       return true;
     }
   }
-  if (p < sp->endp) {
+  if (&p[0] < endp) {
     if (*p == '+' || *p == '-') {
       return true;
     }
@@ -2081,7 +2080,7 @@ static bool scan_check_number(scanner_t *sp) {
       return true;
     }
   }
-  if (p + 3 < sp->endp) {
+  if (&p[3] < endp) {
     if (0 == memcmp(p, "nan", 3) || 0 == memcmp(p, "inf", 3)) {
       return true;
     }
@@ -2092,19 +2091,19 @@ static bool scan_check_number(scanner_t *sp) {
 // scan a literal that is not a string
 static int scan_nonstring_literal(scanner_t *sp, token_t *tok) {
   int lineno = sp->lineno;
-  if (scan_check_time(sp)) {
+  if (test_time(sp->cur, sp->endp)) {
     return scan_time(sp, tok);
   }
 
-  if (scan_check_date(sp)) {
+  if (test_date(sp->cur, sp->endp)) {
     return scan_timestamp(sp, tok);
   }
 
-  if (scan_check_bool(sp)) {
+  if (test_bool(sp->cur, sp->endp)) {
     return scan_bool(sp, tok);
   }
 
-  if (scan_check_number(sp)) {
+  if (test_number(sp->cur, sp->endp)) {
     return scan_number(sp, tok);
   }
   return ERROR(sp->ebuf, lineno, "invalid value");
