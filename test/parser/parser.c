@@ -9,6 +9,7 @@ static void usage() {
   exit(1);
 }
 
+// Print a string in json. Properly escape special chars.
 static void print_string(const char *s, int len) {
   printf("{\"type\": \"string\", \"value\": \"");
   for (int i = 0; i < len; i++) {
@@ -58,6 +59,7 @@ static void print_string(const char *s, int len) {
   printf("\"}");
 }
 
+// Print a key
 static void print_key(const char *s, int len) {
   putchar('"');
   for (int i = 0; i < len; i++) {
@@ -107,12 +109,14 @@ static void print_key(const char *s, int len) {
   putchar('"');
 }
 
-static void print_date_local(toml_datum_t datum) {
+// Print a DATE datum
+static void print_date(toml_datum_t datum) {
   printf("{\"type\": \"date-local\", \"value\": \"%04d-%02d-%02d\"}",
          datum.u.ts.year, datum.u.ts.month, datum.u.ts.day);
 }
 
-static void print_time_local(toml_datum_t datum) {
+// Print a TIME datum
+static void print_time(toml_datum_t datum) {
   char fracstr[20];
   fracstr[0] = fracstr[1] = '\0';
   if (datum.u.ts.usec) {
@@ -124,7 +128,8 @@ static void print_time_local(toml_datum_t datum) {
          datum.u.ts.hour, datum.u.ts.minute, datum.u.ts.second, fracstr + 1);
 }
 
-static void print_datetime_local(toml_datum_t datum) {
+// Print a DATETIME datum
+static void print_datetime(toml_datum_t datum) {
   char fracstr[20];
   fracstr[0] = fracstr[1] = '\0';
   if (datum.u.ts.usec) {
@@ -138,7 +143,8 @@ static void print_datetime_local(toml_datum_t datum) {
          datum.u.ts.minute, datum.u.ts.second, fracstr + 1);
 }
 
-static void print_datetime(toml_datum_t datum) {
+// Print a DATETIMETZ datum
+static void print_datetimetz(toml_datum_t datum) {
   char fracstr[20];
   char tzstr[20];
   fracstr[0] = fracstr[1] = tzstr[0] = '\0';
@@ -158,6 +164,7 @@ static void print_datetime(toml_datum_t datum) {
          datum.u.ts.minute, datum.u.ts.second, fracstr + 1, tzstr);
 }
 
+// Print indent spaces 
 int indent_level = 0;
 static int indent() {
   for (int i = 0; i < indent_level * 2; i++) {
@@ -166,6 +173,7 @@ static int indent() {
   return 0;
 }
 
+// Print datum tree recursively
 static void print_datum(toml_datum_t datum) {
   switch (datum.type) {
   case TOML_STRING:
@@ -184,16 +192,16 @@ static void print_datum(toml_datum_t datum) {
            datum.u.boolean ? "true" : "false");
     break;
   case TOML_DATE:
-    print_date_local(datum);
+    print_date(datum);
     break;
   case TOML_TIME:
-    print_time_local(datum);
+    print_time(datum);
     break;
   case TOML_DATETIME:
-    print_datetime_local(datum);
+    print_datetime(datum);
     break;
   case TOML_DATETIMETZ:
-    print_datetime(datum);
+    print_datetimetz(datum);
     break;
   case TOML_ARRAY:
     printf("[");
