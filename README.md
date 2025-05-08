@@ -118,6 +118,8 @@ invalid tests: 371 passed,  0 failed
 
 ## Installing
 
+The install will copy `tomlc17.h` and `libtomlc17.a` to the `$prefix/include` and `$prefix/lib` directories.
+
 ```bash
 unset DEBUG
 make clean install prefix=/usr/local
