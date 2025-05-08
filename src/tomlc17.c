@@ -2061,7 +2061,7 @@ static bool test_number(const char *p, const char *endp) {
   return false;
 }
 
-// scan a literal that is not a string
+// Scan a literal that is not a string
 static int scan_nonstring_literal(scanner_t *sp, token_t *tok) {
   int lineno = sp->lineno;
   if (test_time(sp->cur, sp->endp)) {
@@ -2082,6 +2082,7 @@ static int scan_nonstring_literal(scanner_t *sp, token_t *tok) {
   return ERROR(sp->ebuf, lineno, "invalid value");
 }
 
+// Scan a literal
 static int scan_literal(scanner_t *sp, token_t *tok) {
   *tok = mktoken(sp, LIT);
   const char *p = sp->cur;
@@ -2093,6 +2094,7 @@ static int scan_literal(scanner_t *sp, token_t *tok) {
   return 0;
 }
 
+// Save the current state of the scanner
 static scanner_state_t scan_mark(scanner_t *sp) {
   scanner_state_t mark;
   mark.sp = sp;
@@ -2101,12 +2103,14 @@ static scanner_state_t scan_mark(scanner_t *sp) {
   return mark;
 }
 
+// Restore the scanner state to a previously saved state
 static void scan_restore(scanner_t *sp, scanner_state_t mark) {
   assert(mark.sp == sp);
   sp->cur = mark.cur;
   sp->lineno = mark.lineno;
 }
 
+// Return the next token
 static int scan_next(scanner_t *sp, bool keymode, token_t *tok) {
 again:
   *tok = mktoken(sp, FIN);
