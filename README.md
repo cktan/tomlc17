@@ -101,11 +101,13 @@ We run the official `toml-test` as described
 section](https://github.com/toml-lang/toml-test?tab=readme-ov-file#installation)
 for prequisites to run the tests.
 
+The following command invokes the tests:
+
 ```bash
 make test
 ```
 
-As of today (05/07/2025), all tests passed.
+As of today (05/07/2025), all tests passed:
 
 ```
 toml-test v0001-01-01 [/home/cktan/p/tomlc17/test/stdtest/driver]: using embedded tests
