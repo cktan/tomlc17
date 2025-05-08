@@ -29,6 +29,9 @@ enum toml_type_t {
   TOML_TABLE,
 };
 
+/* This is a Node in a Tree that represents a toml document rooted
+ * from toml_result_t::toptab.
+ */
 typedef struct toml_datum_t toml_datum_t;
 struct toml_datum_t {
   toml_type_t type;
