@@ -372,7 +372,7 @@ toml_result_t toml_parse_file_ex(const char *fname) {
 toml_result_t toml_parse_file(FILE *fp) {
   toml_result_t result = {0};
   char *buf = 0;
-  int top, max;  // index into buf[]
+  int top, max; // index into buf[]
   top = max = 0;
 
   // Read file into memory
@@ -672,7 +672,8 @@ static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart,
 }
 
 // Starting at toptab, descend following keypart[]. If a key does not
-// exist in the current table, create a new table entry for the key.
+// exist in the current table, create a new table entry for the
+// key. Returns the final table represented by the key.
 static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
                                      toml_datum_t *toptab, keypart_t *keypart,
                                      bool stdtabexpr) {

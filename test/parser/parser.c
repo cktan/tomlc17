@@ -164,7 +164,7 @@ static void print_datetimetz(toml_datum_t datum) {
          datum.u.ts.minute, datum.u.ts.second, fracstr + 1, tzstr);
 }
 
-// Print indent spaces 
+// Print indent spaces
 int indent_level = 0;
 static int indent() {
   for (int i = 0; i < indent_level * 2; i++) {
