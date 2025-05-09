@@ -371,18 +371,19 @@ toml_result_t toml_parse_file_ex(const char *fname) {
  */
 toml_result_t toml_parse_file(FILE *fp) {
   toml_result_t result = {0};
-  int bufsz = 0;
   char *buf = 0;
-  int off = 0;
+  int top, max;  // index into buf[]
+  top = max = 0;
 
   // Read file into memory
   while (!feof(fp)) {
-
-    if (off == bufsz) {
-      int xsz = (bufsz * 1.5) + 1000;
-      if (xsz < 0) {
-        if (bufsz < INT_MAX) {
-          xsz = INT_MAX;
+    assert(top <= max);
+    if (top == max) {
+      // need to extend buf[]
+      int tmpmax = (max * 1.5) + 1000;
+      if (tmpmax < 0) {
+        if (max < INT_MAX) {
+          tmpmax = INT_MAX;
         } else {
           snprintf(result.errmsg, sizeof(result.errmsg),
                    "file is bigger than %d bytes", INT_MAX);
@@ -391,29 +392,28 @@ toml_result_t toml_parse_file(FILE *fp) {
         }
       }
       // add an extra byte for terminating NUL
-      char *x = REALLOC(buf, xsz + 1);
-      if (!x) {
+      char *tmp = REALLOC(buf, tmpmax + 1);
+      if (!tmp) {
         snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
         FREE(buf);
         return result;
       }
-      buf = x;
-      bufsz = xsz;
+      buf = tmp;
+      max = tmpmax;
     }
 
     errno = 0;
-    int n = fread(buf + off, 1, bufsz - off, fp);
+    top += fread(buf + top, 1, max - top, fp);
     if (ferror(fp)) {
       snprintf(result.errmsg, sizeof(result.errmsg), "%s",
                errno ? strerror(errno) : "Error reading file");
       FREE(buf);
       return result;
     }
-    off += n;
   }
-  buf[off] = 0; // NUL terminator
+  buf[top] = 0; // NUL terminator
 
-  result = toml_parse(buf, off);
+  result = toml_parse(buf, top);
   FREE(buf);
   return result;
 }
