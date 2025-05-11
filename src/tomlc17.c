@@ -382,11 +382,12 @@ toml_result_t toml_parse_file(FILE *fp) {
       // need to extend buf[]
       int tmpmax = (max * 1.5) + 1000;
       if (tmpmax < 0) {
-        if (max < INT_MAX) {
-          tmpmax = INT_MAX;
+        // the real max is INT_MAX - 1 to account for terminating NUL.
+        if (max < INT_MAX - 1) {
+          tmpmax = INT_MAX - 1;
         } else {
           snprintf(result.errmsg, sizeof(result.errmsg),
-                   "file is bigger than %d bytes", INT_MAX);
+                   "file is bigger than %d bytes", INT_MAX - 1);
           FREE(buf);
           return result;
         }
@@ -2323,7 +2324,6 @@ static int utf8_to_ucs(const char *orig, int len, uint32_t *ret) {
  * -1 on error.
  */
 static int ucs_to_utf8(uint32_t code, char buf[4]) {
-  (void)utf8_to_ucs; // silent unused-function warning
   /* http://stackoverflow.com/questions/6240055/manually-converting-unicode-codepoints-into-utf-8-and-utf-16
    */
   /* The UCS code values 0xd800–0xdfff (UTF-16 surrogates) as well
@@ -2332,7 +2332,8 @@ static int ucs_to_utf8(uint32_t code, char buf[4]) {
    */
   /*
    *  https://github.com/toml-lang/toml-test/issues/165
-   *  This is implicitly allowed by TOML
+   *  [0xd800, 0xdfff] and [0xfffe, 0xffff] are implicitly allowed by TOML, so
+   * we disable the check.
    */
   if (0) {
     if (0xd800 <= code && code <= 0xdfff)
@@ -2379,6 +2380,7 @@ static int ucs_to_utf8(uint32_t code, char buf[4]) {
     return 4;
   }
 
+#ifdef UNDEF
   if (0) {
     // NOTE: these code points taking more than 4 bytes are not supported
     /* 0x00200000 - 0x03FFFFFF:
@@ -2406,6 +2408,7 @@ static int ucs_to_utf8(uint32_t code, char buf[4]) {
       return 6;
     }
   }
+#endif
 
   return -1;
 }
