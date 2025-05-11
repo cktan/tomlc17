@@ -96,8 +96,8 @@ make
 ## Running tests
 
 We run the official `toml-test` as described
-[here](https://github.com/toml-lang/toml-test). Refer to the
-[installation
+[here](https://github.com/toml-lang/toml-test). Refer to
+[this
 section](https://github.com/toml-lang/toml-test?tab=readme-ov-file#installation)
 for prerequisites to run the tests.
 
