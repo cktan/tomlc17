@@ -617,13 +617,11 @@ static int token_to_boolean(parser_t *pp, token_t tok, toml_datum_t *ret) {
 }
 
 // Parse a multipart key. Return 0 on success, -1 otherwise.
-static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart,
-                     int *keylineno) {
+static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart) {
   ret_keypart->nspan = 0;
   // key = simple-key | dotted_key
   // simple-key = STRING | LITSTRING | LIT
   // dotted-key = simple-key (DOT simple-key)+
-  *keylineno = tok.lineno;
   if (tok.toktyp != STRING && tok.toktyp != LITSTRING && tok.toktyp != LIT) {
     return ERROR(pp->ebuf, tok.lineno, "missing key");
   }
@@ -856,8 +854,8 @@ static int parse_inline_table(parser_t *pp, token_t tok,
 
     // Get the keyparts
     keypart_t keypart = {0};
-    int keylineno;
-    DO(parse_key(pp, tok, &keypart, &keylineno));
+    int keylineno = tok.lineno;
+    DO(parse_key(pp, tok, &keypart));
 
     // Descend to one keypart before last
     span_t lastkeypart = keypart.span[--keypart.nspan];
@@ -948,9 +946,9 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
   DO(scan_key(&pp->scanner, &tok));
 
   // Extract the keypart[]
-  int keylineno;
+  int keylineno = tok.lineno;
   keypart_t keypart;
-  DO(parse_key(pp, tok, &keypart, &keylineno));
+  DO(parse_key(pp, tok, &keypart));
 
   // Eat the ]
   DO(scan_key(&pp->scanner, &tok));
@@ -1027,9 +1025,9 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   // Read the first keypart
   DO(scan_key(&pp->scanner, &tok));
 
-  int keylineno;
+  int keylineno = tok.lineno;
   keypart_t keypart;
-  DO(parse_key(pp, tok, &keypart, &keylineno));
+  DO(parse_key(pp, tok, &keypart));
 
   // eat the ]]
   token_t rrb;
@@ -1125,9 +1123,9 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
 // Parse an expression. A toml doc is just a list of expressions.
 static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
   // Obtain the key
-  int keylineno;
+  int keylineno = tok.lineno;
   keypart_t keypart;
-  DO(parse_key(pp, tok, &keypart, &keylineno));
+  DO(parse_key(pp, tok, &keypart));
 
   // match the '='
   DO(scan_key(&pp->scanner, &tok));
