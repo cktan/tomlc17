@@ -2,8 +2,9 @@
 
 TOML in c99, c17; v1.0 compliant.
 
-* Compatible with [TOML v1.0.0](https://toml.io/en/v1.0.0).
-* Passes the [standard test suites](https://github.com/toml-lang/toml-test/)
+* Compatible with C++.
+* Implements [TOML v1.0.0](https://toml.io/en/v1.0.0).
+* Passes the [standard test suites](https://github.com/toml-lang/toml-test/).
 
 ## Usage
 
