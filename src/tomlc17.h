@@ -102,7 +102,17 @@ TOML_EXTERN void toml_free(toml_result_t result);
  * Find a key in a toml_table. Return the value of the key if found,
  * or a TOML_UNKNOWN otherwise.
  */
-TOML_EXTERN toml_datum_t toml_table_find(toml_datum_t datum, const char *key);
+TOML_EXTERN toml_datum_t toml_get(toml_datum_t table, const char *key);
+
+/**
+ * OBSOLETE: use toml_get() instead.
+ * Find a key in a toml_table. Return the value of the key if found,
+ * or a TOML_UNKNOWN otherwise. (
+ */
+static inline toml_datum_t toml_table_find(toml_datum_t table,
+                                           const char *key) {
+  return toml_get(table, key);
+}
 
 /* Options that override tomlc17 defaults globally */
 typedef struct toml_option_t toml_option_t;

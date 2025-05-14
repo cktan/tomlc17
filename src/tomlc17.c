@@ -315,7 +315,7 @@ static void free_datum(toml_datum_t datum) {
  * Find a key in a toml_table. Return the value of the key if found,
  * or a TOML_UNKNOWN otherwise.
  */
-toml_datum_t toml_table_find(toml_datum_t datum, const char *key) {
+toml_datum_t toml_get(toml_datum_t datum, const char *key) {
   toml_datum_t ret = {0};
   if (datum.type == TOML_TABLE) {
     int n = datum.u.tab.size;
