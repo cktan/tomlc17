@@ -690,8 +690,7 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
         ERROR(pp->ebuf, lineno, "%s", reason);
         return NULL;
       }
-      // Descend.
-      tab = &tab->u.tab.value[tab->u.tab.size - 1];
+      tab = &tab->u.tab.value[tab->u.tab.size - 1];  // descend
       continue;
     }
 
@@ -700,11 +699,11 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
 
     // If the value is a table, descend.
     if (value->type == TOML_TABLE) {
-      tab = value;
+      tab = value; // descend
       continue;
     }
 
-    // If the value is an array...
+    // If the value is an array: locate the last entry and descend.
     if (value->type == TOML_ARRAY) {
       // If empty: error.
       if (value->u.arr.size <= 0) {
@@ -722,9 +721,7 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
               keypart->span[i].ptr);
         return NULL;
       }
-
-      // Descend.
-      tab = value;
+      tab = value; // descend
       continue;
     }
 
