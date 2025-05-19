@@ -54,6 +54,7 @@ static int ERROR(ebuf_t ebuf, int lineno, const char *fmt, ...) {
  */
 typedef struct pool_t pool_t;
 struct pool_t {
+  pool_t *prev;
   int top, max;
   char buf[0]; // first byte starts here
 };
@@ -79,7 +80,13 @@ static pool_t *pool_create(int N) {
 /**
  *  Destroy a memory pool.
  */
-static void pool_destroy(pool_t *pool) { FREE(pool); }
+static void pool_destroy(pool_t *pool) {
+  if (pool->prev) {
+    pool_destroy(pool->prev);
+    pool->prev = NULL;
+  }
+  FREE(pool);
+}
 
 /**
  *  Allocate n bytes from pool. Return the memory allocated on
@@ -111,11 +118,13 @@ struct keypart_t {
 
 static int utf8_to_ucs(const char *s, int len, uint32_t *ret);
 static int ucs_to_utf8(uint32_t code, char buf[4]);
+static void reset_flag_recursively(toml_datum_t *datum, uint32_t flag);
 
 // flags for toml_datum_t::flag.
 #define FLAG_INLINED 1
 #define FLAG_STDEXPR 2
 #define FLAG_EXPLICIT 4
+#define FLAG_OLDDEF 8 // defined in previous parsers
 
 static inline size_t align8(size_t x) { return (((x) + 7) & ~7); }
 
@@ -528,6 +537,11 @@ bail:
   return result;
 }
 
+int toml_parse_append(toml_result_t *previous_result, const char *src,
+                      int len) {
+  reset_flag_recursively(&previous_result->toptab, FLAG_OLDDEF);
+}
+
 // Convert a (LITSTRING, LIT, MLLITSTRING, MLSTRING, or STRING) token to a
 // datum.
 static int token_to_string(parser_t *pp, token_t tok, toml_datum_t *ret) {
@@ -690,7 +704,7 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
         ERROR(pp->ebuf, lineno, "%s", reason);
         return NULL;
       }
-      tab = &tab->u.tab.value[tab->u.tab.size - 1];  // descend
+      tab = &tab->u.tab.value[tab->u.tab.size - 1]; // descend
       continue;
     }
 
@@ -736,17 +750,35 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
 }
 
 // Recursively set flags on datum
-static void set_flag_recursive(toml_datum_t *datum, uint32_t flag) {
+static void set_flag_recursively(toml_datum_t *datum, uint32_t flag) {
   datum->flag |= flag;
   switch (datum->type) {
   case TOML_ARRAY:
     for (int i = 0, top = datum->u.arr.size; i < top; i++) {
-      set_flag_recursive(&datum->u.arr.elem[i], flag);
+      set_flag_recursively(&datum->u.arr.elem[i], flag);
     }
     break;
   case TOML_TABLE:
     for (int i = 0, top = datum->u.tab.size; i < top; i++) {
-      set_flag_recursive(&datum->u.tab.value[i], flag);
+      set_flag_recursively(&datum->u.tab.value[i], flag);
+    }
+    break;
+  default:
+    break;
+  }
+}
+
+static void reset_flag_recursively(toml_datum_t *datum, uint32_t flag) {
+  datum->flag = flag;
+  switch (datum->type) {
+  case TOML_ARRAY:
+    for (int i = 0, top = datum->u.arr.size; i < top; i++) {
+      reset_flag_recursively(&datum->u.arr.elem[i], flag);
+    }
+    break;
+  case TOML_TABLE:
+    for (int i = 0, top = datum->u.tab.size; i < top; i++) {
+      reset_flag_recursively(&datum->u.tab.value[i], flag);
     }
     break;
   default:
@@ -806,7 +838,7 @@ static int parse_inline_array(parser_t *pp, token_t tok,
   }
 
   // Set the INLINE flag for all things in this array.
-  set_flag_recursive(ret_datum, FLAG_INLINED);
+  set_flag_recursively(ret_datum, FLAG_INLINED);
   return 0;
 }
 
@@ -894,7 +926,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     need_comma = 1, was_comma = 0;
   }
 
-  set_flag_recursive(ret_datum, FLAG_INLINED);
+  set_flag_recursively(ret_datum, FLAG_INLINED);
   return 0;
 }
 

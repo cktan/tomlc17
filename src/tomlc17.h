@@ -82,6 +82,12 @@ struct toml_result_t {
 TOML_EXTERN toml_result_t toml_parse(const char *src, int len);
 
 /**
+ * Parse additional toml document and override previous result.
+ */
+TOML_EXTERN int toml_parse_append(toml_result_t *previous_result,
+                                  const char *src, int len);
+
+/**
  * Parse a toml file. Returns a toml_result which must be freed
  * using toml_free() eventually.
  */
