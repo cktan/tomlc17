@@ -13,9 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static toml_option_t toml_option = {0, malloc, free, realloc};
+static toml_option_t toml_option = {0, realloc, free};
 
-#define MALLOC(n) toml_option.mem_alloc(n)
 #define FREE(p) toml_option.mem_free(p)
 #define REALLOC(p, n) toml_option.mem_realloc(p, n)
 
@@ -67,7 +66,7 @@ static pool_t *pool_create(int N) {
     return NULL;
   }
   int totalsz = sizeof(pool_t) + N;
-  pool_t *pool = MALLOC(totalsz);
+  pool_t *pool = REALLOC(0, totalsz);
   if (!pool) {
     return NULL;
   }
@@ -202,6 +201,64 @@ struct parser_t {
   ebuf_t ebuf;
 };
 
+static int datum_dup(toml_datum_t *dst, const toml_datum_t *src, pool_t *pool,
+                     const char **reason) {
+  int N;
+  memset(dst, 0, sizeof(*dst));
+  dst->type = src->type;
+  switch (src->type) {
+  case TOML_STRING:
+    dst->u.str.ptr = pool_alloc(pool, src->u.str.len + 1);
+    if (!dst->u.str.ptr) {
+      *reason = "out of memory";
+      return -1;
+    }
+    memcpy((void *)dst->u.str.ptr, src->u.str.ptr, src->u.str.len + 1);
+    dst->u.str.len = src->u.str.len;
+    break;
+  case TOML_ARRAY:
+    N = src->u.arr.size;
+    dst->u.arr.elem = REALLOC(0, sizeof(toml_datum_t) * N);
+    if (!dst->u.arr.elem) {
+      *reason = "out of memory";
+      return -1;
+    }
+    for (int i = 0; i < N; i++) {
+      memset(&dst->u.arr.elem[i], 0, sizeof(toml_datum_t));
+      dst->u.arr.size++;
+      DO(datum_dup(&dst->u.arr.elem[i], &src->u.arr.elem[i], pool, reason));
+    }
+    break;
+  case TOML_TABLE:
+    N = src->u.tab.size;
+    dst->u.tab.key = REALLOC(0, sizeof(*dst->u.tab.key) * N);
+    dst->u.tab.len = REALLOC(0, sizeof(*dst->u.tab.len) * N);
+    dst->u.tab.value = REALLOC(0, sizeof(*dst->u.tab.value) * N);
+    if (!(dst->u.tab.key && dst->u.tab.len && dst->u.tab.value)) {
+      *reason = "out of memory";
+      return -1;
+    }
+    for (int i = 0; i < N; i++) {
+      dst->u.tab.key[i] = 0;
+      dst->u.tab.len[i] = 0;
+      memset(&dst->u.tab.value[i], 0, sizeof(toml_datum_t));
+      dst->u.tab.size++;
+      dst->u.tab.key[i] = pool_alloc(pool, src->u.tab.len[i] + 1);
+      memcpy((void *)dst->u.tab.key[i], src->u.tab.key[i],
+             src->u.tab.len[i] + 1);
+      dst->u.tab.len[i] = src->u.tab.len[i];
+      DO(datum_dup(&dst->u.tab.value[i], &src->u.tab.value[i], pool, reason));
+    }
+    break;
+  default:
+    *dst = *src;
+  }
+  return 0;
+}
+
+static int datum_override(toml_datum_t *dst, const toml_datum_t *src,
+                          pool_t *pool, const char **reason) {}
+
 // Find key in tab and return its index. If not found, return -1.
 static int tab_find(toml_datum_t *tab, span_t key) {
   assert(tab->type == TOML_TABLE);
@@ -331,10 +388,65 @@ toml_datum_t toml_get(toml_datum_t datum, const char *key) {
 }
 
 /**
+ *  Override values in r1 using r2. Return a new result. All results
+ *  (i.e., r1, r2 and the returned result) must be freed using toml_free()
+ *  after use.
+ */
+toml_result_t toml_override(const toml_result_t *r1, const toml_result_t *r2) {
+  toml_result_t result = {0};
+  pool_t *r1pool = (pool_t *)r1->__internal;
+  pool_t *r2pool = (pool_t *)r2->__internal;
+  pool_t *pool = 0;
+
+  if (!(r1->ok && r2->ok)) {
+    snprintf(result.errmsg, sizeof(result.errmsg), "bad param");
+    goto bail;
+  }
+
+  if (!(r1->toptab.type == TOML_TABLE && r2->toptab.type == TOML_TABLE)) {
+    snprintf(result.errmsg, sizeof(result.errmsg), "bad param: missing table");
+    goto bail;
+  }
+
+  // make a pool with enough memory to combine r1 and r2
+  pool = pool_create(r1pool->top + r2pool->top);
+  if (!pool) {
+    snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
+    goto bail;
+  }
+
+  // duplicate r1 into my toptab
+  toml_datum_t toptab = {0};
+  const char *reason;
+  if (datum_dup(&toptab, &r1->toptab, pool, &reason)) {
+    snprintf(result.errmsg, sizeof(result.errmsg), "%s", reason);
+    goto bail;
+  }
+
+  // merge r2 into my toptab
+  if (datum_override(&toptab, &r2->toptab, pool, &reason)) {
+    snprintf(result.errmsg, sizeof(result.errmsg), "%s", reason);
+    goto bail;
+  }
+
+  result.ok = 1;
+  result.toptab = toptab;
+  result.__internal = pool;
+  return result;
+
+bail:
+  pool_destroy(pool);
+  result.ok = false;
+  free_datum(toptab);
+  assert(result.errmsg[0]);
+  return result;
+}
+
+/**
  *  Return the default options.
  */
 toml_option_t toml_default_option(void) {
-  toml_option_t opt = {0, malloc, free, realloc};
+  toml_option_t opt = {0, realloc, free};
   return opt;
 }
 
@@ -690,7 +802,7 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
         ERROR(pp->ebuf, lineno, "%s", reason);
         return NULL;
       }
-      tab = &tab->u.tab.value[tab->u.tab.size - 1];  // descend
+      tab = &tab->u.tab.value[tab->u.tab.size - 1]; // descend
       continue;
     }
 

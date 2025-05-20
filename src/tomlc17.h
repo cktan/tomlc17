@@ -114,13 +114,20 @@ static inline toml_datum_t toml_table_find(toml_datum_t table,
   return toml_get(table, key);
 }
 
+/**
+ *  Override values in r1 using r2. Return a new result. All results
+ *  (i.e., r1, r2 and the returned result) must be freed using toml_free()
+ *  after use.
+ */
+TOML_EXTERN toml_result_t toml_override(const toml_result_t *r1,
+                                        const toml_result_t *r2);
+
 /* Options that override tomlc17 defaults globally */
 typedef struct toml_option_t toml_option_t;
 struct toml_option_t {
   bool check_utf8; // Check all chars are valid utf8; default: false.
-  void *(*mem_alloc)(size_t size);              // default: malloc()
-  void (*mem_free)(void *ptr);                  // default: free()
   void *(*mem_realloc)(void *ptr, size_t size); // default: realloc()
+  void (*mem_free)(void *ptr);                  // default: free()
 };
 
 /**
