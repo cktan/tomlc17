@@ -15,6 +15,8 @@
 
 static toml_option_t toml_option = {0, realloc, free};
 
+static toml_datum_t DATUM_ZERO = {0};
+
 #define FREE(p) toml_option.mem_free(p)
 #define REALLOC(p, n) toml_option.mem_realloc(p, n)
 
@@ -84,12 +86,20 @@ static void pool_destroy(pool_t *pool) { FREE(pool); }
  *  Allocate n bytes from pool. Return the memory allocated on
  *  success, or NULL if out of memory.
  */
-static char *pool_alloc(pool_t *pool, int n) {
-  if (pool->top + n > pool->max) {
-    return NULL;
+static inline void *pool_alloc(pool_t *pool, int n) {
+  void *ret = NULL;
+  if (pool->top + n <= pool->max) {
+    ret = pool->buf + pool->top;
+    pool->top += n;
   }
-  char *ret = pool->buf + pool->top;
-  pool->top += n;
+  return ret;
+}
+
+static inline void *pool_copy(pool_t *pool, const void *ptr, int len) {
+  void *ret = pool_alloc(pool, len);
+  if (ret) {
+    memcpy(ret, ptr, len);
+  }
   return ret;
 }
 
@@ -201,19 +211,21 @@ struct parser_t {
   ebuf_t ebuf;
 };
 
+static void datum_free(toml_datum_t *datum);
+
 static int datum_dup(toml_datum_t *dst, const toml_datum_t *src, pool_t *pool,
                      const char **reason) {
+  assert(dst->type == TOML_UNKNOWN);
   int N;
-  memset(dst, 0, sizeof(*dst));
+  *dst = DATUM_ZERO;
   dst->type = src->type;
   switch (src->type) {
   case TOML_STRING:
-    dst->u.str.ptr = pool_alloc(pool, src->u.str.len + 1);
+    dst->u.str.ptr = pool_copy(pool, src->u.str.ptr, src->u.str.len + 1);
     if (!dst->u.str.ptr) {
       *reason = "out of memory";
       return -1;
     }
-    memcpy((void *)dst->u.str.ptr, src->u.str.ptr, src->u.str.len + 1);
     dst->u.str.len = src->u.str.len;
     break;
   case TOML_ARRAY:
@@ -224,7 +236,7 @@ static int datum_dup(toml_datum_t *dst, const toml_datum_t *src, pool_t *pool,
       return -1;
     }
     for (int i = 0; i < N; i++) {
-      memset(&dst->u.arr.elem[i], 0, sizeof(toml_datum_t));
+      dst->u.arr.elem[i] = DATUM_ZERO;
       dst->u.arr.size++;
       DO(datum_dup(&dst->u.arr.elem[i], &src->u.arr.elem[i], pool, reason));
     }
@@ -241,23 +253,67 @@ static int datum_dup(toml_datum_t *dst, const toml_datum_t *src, pool_t *pool,
     for (int i = 0; i < N; i++) {
       dst->u.tab.key[i] = 0;
       dst->u.tab.len[i] = 0;
-      memset(&dst->u.tab.value[i], 0, sizeof(toml_datum_t));
+      dst->u.tab.value[i] = DATUM_ZERO;
       dst->u.tab.size++;
-      dst->u.tab.key[i] = pool_alloc(pool, src->u.tab.len[i] + 1);
-      memcpy((void *)dst->u.tab.key[i], src->u.tab.key[i],
-             src->u.tab.len[i] + 1);
+      dst->u.tab.key[i] =
+          pool_copy(pool, src->u.tab.key[i], src->u.tab.len[i] + 1);
+      if (!dst->u.tab.key[i]) {
+        *reason = "out of memory";
+        return -1;
+      }
       dst->u.tab.len[i] = src->u.tab.len[i];
       DO(datum_dup(&dst->u.tab.value[i], &src->u.tab.value[i], pool, reason));
     }
     break;
   default:
     *dst = *src;
+    break;
   }
   return 0;
 }
 
 static int datum_override(toml_datum_t *dst, const toml_datum_t *src,
-                          pool_t *pool, const char **reason) {}
+                          pool_t *pool, const char **reason) {
+  int N;
+  switch (src->type) {
+  case TOML_STRING:
+    datum_free(dst);
+    dst->type = TOML_STRING;
+    dst->u.str.ptr = pool_copy(pool, src->u.str.ptr, src->u.str.len + 1);
+    if (!dst->u.str.ptr) {
+      *reason = "out of memory";
+      return -1;
+    }
+    dst->u.str.len = src->u.str.len;
+    break;
+  case TOML_ARRAY:
+    if (dst->type == TOML_ARRAY) {
+      // if this is an array of table: append
+      // else override.
+      abort();
+    } else {
+      // Not an array: override.
+      datum_free(dst);
+      DO(datum_dup(dst, src, pool, reason));
+    }
+    break;
+  case TOML_TABLE:
+    if (dst->type == TOML_TABLE) {
+      // for key in src:
+      //    if key in dst, override. Else insert.
+      abort();
+    } else {
+      // Not a table: override.
+      datum_free(dst);
+      DO(datum_dup(dst, src, pool, reason));
+    }
+    break;
+  default:
+    *dst = *src;
+    break;
+  }
+  return 0;
+}
 
 // Find key in tab and return its index. If not found, return -1.
 static int tab_find(toml_datum_t *tab, span_t key) {
@@ -275,6 +331,7 @@ static int tab_find(toml_datum_t *tab, span_t key) {
 // On error, reason will point to an error message.
 static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
                    const char **reason) {
+  assert(tab->type == TOML_TABLE);
   // Check for duplicate key
   int nkey = tab->u.tab.size;
   for (int i = 0; i < nkey; i++) {
@@ -348,24 +405,24 @@ static toml_datum_t mkdatum(toml_type_t ty) {
 }
 
 // Recursively free any dynamically allocated memory in the datum tree
-static void free_datum(toml_datum_t datum) {
-  if (datum.type == TOML_TABLE) {
-    for (int i = 0, top = datum.u.tab.size; i < top; i++) {
-      free_datum(datum.u.tab.value[i]);
+static void datum_free(toml_datum_t *datum) {
+  if (datum->type == TOML_TABLE) {
+    for (int i = 0, top = datum->u.tab.size; i < top; i++) {
+      datum_free(&datum->u.tab.value[i]);
     }
-    FREE(datum.u.tab.key);
-    FREE(datum.u.tab.len);
-    FREE(datum.u.tab.value);
-    return;
-  }
-  if (datum.type == TOML_ARRAY) {
-    for (int i = 0, top = datum.u.arr.size; i < top; i++) {
-      free_datum(datum.u.arr.elem[i]);
+    FREE(datum->u.tab.key);
+    FREE(datum->u.tab.len);
+    FREE(datum->u.tab.value);
+  } else if (datum->type == TOML_ARRAY) {
+    for (int i = 0, top = datum->u.arr.size; i < top; i++) {
+      datum_free(&datum->u.arr.elem[i]);
     }
-    FREE(datum.u.arr.elem);
-    return;
+    FREE(datum->u.arr.elem);
   }
   // other types do not allocate memory
+
+  // zero out for safety
+  *datum = DATUM_ZERO;
 }
 
 /**
@@ -437,7 +494,7 @@ toml_result_t toml_override(const toml_result_t *r1, const toml_result_t *r2) {
 bail:
   pool_destroy(pool);
   result.ok = false;
-  free_datum(toptab);
+  datum_free(&toptab);
   assert(result.errmsg[0]);
   return result;
 }
@@ -460,7 +517,7 @@ void toml_set_option(toml_option_t opt) { toml_option = opt; }
  */
 void toml_free(toml_result_t result) {
   pool_destroy((pool_t *)result.__internal);
-  free_datum(result.toptab);
+  datum_free(&result.toptab);
 }
 
 /**
@@ -1307,7 +1364,6 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
   if (!p) {
     return ERROR(pp->ebuf, tok.lineno, "out of memory");
   }
-
   // Copy from token string into buffer
   memcpy(p, tok.str.ptr, tok.str.len);
   p[tok.str.len] = 0; // additional NUL term for safety
