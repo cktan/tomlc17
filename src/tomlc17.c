@@ -301,7 +301,17 @@ static int datum_override(toml_datum_t *dst, const toml_datum_t *src,
     if (dst->type == TOML_TABLE) {
       // for key in src:
       //    if key in dst, override. Else insert.
-      abort();
+      for (int i = 0; i < src->u.tab.size; i++) {
+	span_t key;
+	key.ptr = src.u.tab.key[i];
+	key.len = src.u.tab.len[i];
+	toml_datum_t* value = tab_emplace(dst, key, reason);
+	if (!value) {
+	  return -1;
+	}
+	datum_free(*value);
+	*value = datum_dup(src.u.tab.value[i]);
+      }
     } else {
       // Not a table: override.
       datum_free(dst);
@@ -314,6 +324,40 @@ static int datum_override(toml_datum_t *dst, const toml_datum_t *src,
   }
   return 0;
 }
+
+static toml_datum_t* tab_emplace(toml_datum_t* tab, span_t key, const char** reason) {
+  assert(tab->type == TOML_TABLE);
+  // Check for duplicate key
+  int nkey = tab->u.tab.size;
+  for (int i = 0; i < nkey; i++) {
+    if (tab->u.tab.len[i] == key.len &&
+        0 == memcmp(tab->u.tab.key[i], key.ptr, key.len)) {
+      return &tab->u.tab.value[i];
+    }
+  }
+  
+  // Expand pkey[], plen[] and value[]
+  char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(nkey + 1));
+  int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(nkey + 1));
+  toml_datum_t *value =
+      REALLOC(tab->u.tab.value, sizeof(*value) * align8(nkey + 1));
+  if (!pkey || !plen || !value) {
+    *reason = "out of memory";
+    return NULL;
+  }
+  tab->u.tab.key = (const char **)pkey;
+  tab->u.tab.len = plen;
+  tab->u.tab.value = value;
+
+  // Append the new key/value
+  tab->u.tab.size = nkey + 1;
+  pkey[nkey] = (char *)key.ptr;
+  plen[nkey] = key.len;
+  value[nkey] = DATUM_ZERO;
+  return &value[nkey];
+}
+
+
 
 // Find key in tab and return its index. If not found, return -1.
 static int tab_find(toml_datum_t *tab, span_t key) {
@@ -331,35 +375,15 @@ static int tab_find(toml_datum_t *tab, span_t key) {
 // On error, reason will point to an error message.
 static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
                    const char **reason) {
-  assert(tab->type == TOML_TABLE);
-  // Check for duplicate key
-  int nkey = tab->u.tab.size;
-  for (int i = 0; i < nkey; i++) {
-    if (tab->u.tab.len[i] == newkey.len &&
-        0 == memcmp(tab->u.tab.key[i], newkey.ptr, newkey.len)) {
-      *reason = "duplicate key";
-      return -1;
-    }
-  }
-
-  // Expand pkey[], plen[] and value[]
-  char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(nkey + 1));
-  int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(nkey + 1));
-  toml_datum_t *value =
-      REALLOC(tab->u.tab.value, sizeof(*value) * align8(nkey + 1));
-  if (!pkey || !plen || !value) {
-    *reason = "out of memory";
+  toml_datum_t* value = tab_emplace(tab, newkey, reason);
+  if (!value) {
     return -1;
   }
-  tab->u.tab.key = (const char **)pkey;
-  tab->u.tab.len = plen;
-  tab->u.tab.value = value;
-
-  // Append the new key/value
-  tab->u.tab.size = nkey + 1;
-  pkey[nkey] = (char *)newkey.ptr;
-  plen[nkey] = newkey.len;
-  value[nkey] = newvalue;
+  if (value->type) {
+    *reason = "duplicate key";
+    return -1;
+  }
+  *value = newvalue;
   return 0;
 }
 
