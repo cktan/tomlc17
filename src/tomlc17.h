@@ -114,7 +114,6 @@ static inline toml_datum_t toml_table_find(toml_datum_t table,
   return toml_get(table, key);
 }
 
-
 /* Options that override tomlc17 defaults globally */
 typedef struct toml_option_t toml_option_t;
 struct toml_option_t {

@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+const toml_datum_t DATUM_ZERO = {0};
+
 static toml_option_t toml_option = {0, realloc, free};
 
 #define MALLOC(n) toml_option.mem_realloc(0, n)
@@ -202,6 +204,37 @@ struct parser_t {
   ebuf_t ebuf;
 };
 
+static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
+                                 const char **reason) {
+  assert(tab->type == TOML_TABLE);
+  int N = tab->u.tab.size;
+  for (int i = 0; i < N; i++) {
+    if (tab->u.tab.len[i] == key.len &&
+        0 == memcmp(tab->u.tab.key[i], key.ptr, key.len)) {
+      return &tab->u.tab.value[i];
+    }
+  }
+  // Expand pkey[], plen[] and value[]
+  char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
+  int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(N + 1));
+  toml_datum_t *value =
+      REALLOC(tab->u.tab.value, sizeof(*value) * align8(N + 1));
+  if (!pkey || !plen || !value) {
+    *reason = "out of memory";
+    return NULL;
+  }
+  tab->u.tab.key = (const char **)pkey;
+  tab->u.tab.len = plen;
+  tab->u.tab.value = value;
+
+  // Append the new key/value
+  tab->u.tab.size = N + 1;
+  pkey[N] = (char *)key.ptr;
+  plen[N] = key.len;
+  value[N] = DATUM_ZERO;
+  return &value[N];
+}
+
 // Find key in tab and return its index. If not found, return -1.
 static int tab_find(toml_datum_t *tab, span_t key) {
   assert(tab->type == TOML_TABLE);
@@ -218,34 +251,16 @@ static int tab_find(toml_datum_t *tab, span_t key) {
 // On error, reason will point to an error message.
 static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
                    const char **reason) {
-  // Check for duplicate key
-  int nkey = tab->u.tab.size;
-  for (int i = 0; i < nkey; i++) {
-    if (tab->u.tab.len[i] == newkey.len &&
-        0 == memcmp(tab->u.tab.key[i], newkey.ptr, newkey.len)) {
-      *reason = "duplicate key";
-      return -1;
-    }
-  }
-
-  // Expand pkey[], plen[] and value[]
-  char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(nkey + 1));
-  int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(nkey + 1));
-  toml_datum_t *value =
-      REALLOC(tab->u.tab.value, sizeof(*value) * align8(nkey + 1));
-  if (!pkey || !plen || !value) {
-    *reason = "out of memory";
+  assert(tab->type == TOML_TABLE);
+  toml_datum_t *pvalue = tab_emplace(tab, newkey, reason);
+  if (!pvalue) {
     return -1;
   }
-  tab->u.tab.key = (const char **)pkey;
-  tab->u.tab.len = plen;
-  tab->u.tab.value = value;
-
-  // Append the new key/value
-  tab->u.tab.size = nkey + 1;
-  pkey[nkey] = (char *)newkey.ptr;
-  plen[nkey] = newkey.len;
-  value[nkey] = newvalue;
+  if (pvalue->type) {
+    *reason = "duplicate key";
+    return -1;
+  }
+  *pvalue = newvalue;
   return 0;
 }
 
@@ -291,10 +306,10 @@ static toml_datum_t mkdatum(toml_type_t ty) {
 }
 
 // Recursively free any dynamically allocated memory in the datum tree
-static void free_datum(toml_datum_t datum) {
+static void datum_free(toml_datum_t datum) {
   if (datum.type == TOML_TABLE) {
     for (int i = 0, top = datum.u.tab.size; i < top; i++) {
-      free_datum(datum.u.tab.value[i]);
+      datum_free(datum.u.tab.value[i]);
     }
     FREE(datum.u.tab.key);
     FREE(datum.u.tab.len);
@@ -303,7 +318,7 @@ static void free_datum(toml_datum_t datum) {
   }
   if (datum.type == TOML_ARRAY) {
     for (int i = 0, top = datum.u.arr.size; i < top; i++) {
-      free_datum(datum.u.arr.elem[i]);
+      datum_free(datum.u.arr.elem[i]);
     }
     FREE(datum.u.arr.elem);
     return;
@@ -347,8 +362,8 @@ void toml_set_option(toml_option_t opt) { toml_option = opt; }
  *  Free the result returned by toml_parse().
  */
 void toml_free(toml_result_t result) {
+  datum_free(result.toptab);
   pool_destroy((pool_t *)result.__internal);
-  free_datum(result.toptab);
 }
 
 /**
