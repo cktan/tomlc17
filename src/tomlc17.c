@@ -690,7 +690,7 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno,
         ERROR(pp->ebuf, lineno, "%s", reason);
         return NULL;
       }
-      tab = &tab->u.tab.value[tab->u.tab.size - 1];  // descend
+      tab = &tab->u.tab.value[tab->u.tab.size - 1]; // descend
       continue;
     }
 
