@@ -114,13 +114,13 @@ static inline toml_datum_t toml_table_find(toml_datum_t table,
   return toml_get(table, key);
 }
 
+
 /* Options that override tomlc17 defaults globally */
 typedef struct toml_option_t toml_option_t;
 struct toml_option_t {
   bool check_utf8; // Check all chars are valid utf8; default: false.
-  void *(*mem_alloc)(size_t size);              // default: malloc()
-  void (*mem_free)(void *ptr);                  // default: free()
   void *(*mem_realloc)(void *ptr, size_t size); // default: realloc()
+  void (*mem_free)(void *ptr);                  // default: free()
 };
 
 /**

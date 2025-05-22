@@ -13,11 +13,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-static toml_option_t toml_option = {0, malloc, free, realloc};
+static toml_option_t toml_option = {0, realloc, free};
 
-#define MALLOC(n) toml_option.mem_alloc(n)
-#define FREE(p) toml_option.mem_free(p)
+#define MALLOC(n) toml_option.mem_realloc(0, n)
 #define REALLOC(p, n) toml_option.mem_realloc(p, n)
+#define FREE(p) toml_option.mem_free(p)
 
 #define DO(x)                                                                  \
   if (x)                                                                       \
@@ -334,7 +334,7 @@ toml_datum_t toml_get(toml_datum_t datum, const char *key) {
  *  Return the default options.
  */
 toml_option_t toml_default_option(void) {
-  toml_option_t opt = {0, malloc, free, realloc};
+  toml_option_t opt = {0, realloc, free};
   return opt;
 }
 
