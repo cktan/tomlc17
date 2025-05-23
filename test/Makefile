@@ -1,6 +1,6 @@
 .NOTPARALLEL:
 
-DIRS = scankey scanvalue parser stdtest
+DIRS = scankey scanvalue parser merge stdtest
 
 BUILDDIRS = $(DIRS:%=build-%)
 CLEANDIRS = $(DIRS:%=clean-%)

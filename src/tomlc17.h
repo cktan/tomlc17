@@ -114,6 +114,30 @@ static inline toml_datum_t toml_table_find(toml_datum_t table,
   return toml_get(table, key);
 }
 
+/**
+ *  Override values in r1 using r2. Return a new result. All results
+ *  (i.e., r1, r2 and the returned result) must be freed using toml_free()
+ *  after use.
+ *
+ *  LOGIC:
+ *   ret = copy of r1
+ *   for each item x in r2:
+ *     if x is not in ret:
+ *          override
+ *     elif x in ret is NOT of the same type:
+ *         override
+ *     elif x is an array of tables:
+ *         append r2.x to ret.x
+ *     elif x is a table:
+ *         merge r2.x to ret.x
+ *     else:
+ *         override
+ */
+TOML_EXTERN toml_result_t toml_merge(const toml_result_t *r1,
+                                     const toml_result_t *r2);
+
+TOML_EXTERN bool toml_equiv(const toml_result_t *r1, const toml_result_t *r2);
+
 /* Options that override tomlc17 defaults globally */
 typedef struct toml_option_t toml_option_t;
 struct toml_option_t {
