@@ -400,9 +400,11 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
       if (!pvalue) {
         return -1;
       }
-      datum_free(pvalue);
-      if (datum_copy(pvalue, src.u.tab.value[i], pool, reason)) {
-        return -1;
+      if (pvalue->type) {
+	DO(datum_merge(pvalue, src.u.tab.value[i], pool, reason));
+      } else {
+	datum_free(pvalue);
+	DO(datum_copy(pvalue, src.u.tab.value[i], pool, reason));
       }
     }
     return 0;
@@ -414,9 +416,7 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
         if (!pelem) {
           return -1;
         }
-        if (datum_copy(pelem, src.u.arr.elem[i], pool, reason)) {
-          return -1;
-        }
+        DO(datum_copy(pelem, src.u.arr.elem[i], pool, reason));
       }
     }
     return 0;
