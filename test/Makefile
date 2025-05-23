@@ -1,8 +1,7 @@
 .NOTPARALLEL:
 
 # disable merge tests for now
-#DIRS = scankey scanvalue parser merge stdtest
-DIRS = scankey scanvalue parser stdtest
+DIRS = scankey scanvalue parser merge stdtest
 
 BUILDDIRS = $(DIRS:%=build-%)
 CLEANDIRS = $(DIRS:%=clean-%)
