@@ -66,7 +66,7 @@ struct pool_t {
  */
 static pool_t *pool_create(int N) {
   if (N <= 0) {
-    return NULL;
+    N = 100; // minimum
   }
   int totalsz = sizeof(pool_t) + N;
   pool_t *pool = MALLOC(totalsz);
@@ -401,10 +401,10 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
         return -1;
       }
       if (pvalue->type) {
-	DO(datum_merge(pvalue, src.u.tab.value[i], pool, reason));
+        DO(datum_merge(pvalue, src.u.tab.value[i], pool, reason));
       } else {
-	datum_free(pvalue);
-	DO(datum_copy(pvalue, src.u.tab.value[i], pool, reason));
+        datum_free(pvalue);
+        DO(datum_copy(pvalue, src.u.tab.value[i], pool, reason));
       }
     }
     return 0;
@@ -418,8 +418,9 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
         }
         DO(datum_copy(pelem, src.u.arr.elem[i], pool, reason));
       }
+      return 0;
     }
-    return 0;
+    // fallthru
   default:
     break;
   }

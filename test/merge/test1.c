@@ -18,6 +18,10 @@ static void check(const char *doc1, const char *doc2, const char *expected) {
   toml_result_t merged = toml_merge(&r1, &r2);
   toml_result_t exp = toml_parse(expected, strlen(expected));
   CHECK(toml_equiv(&merged, &exp));
+  toml_free(r1);
+  toml_free(r2);
+  toml_free(merged);
+  toml_free(exp);
 }
 
 // All test cases as separate functions
@@ -131,6 +135,9 @@ static void test_array_of_tables() {
   const char *doc2 = "[[products]]\n"
                      "color = \"red\"";
   const char *expected = "[[products]]\n"
+                     "name = \"Hammer\"\n"
+                     "sku = 738594937\n"
+    "[[products]]\n"
                          "color = \"red\"";
   check(doc1, doc2, expected);
 }
