@@ -405,7 +405,7 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
         return -1;
       }
     }
-    break;
+    return 0;
   case TOML_ARRAY:
     if (is_array_of_tables(src)) {
       // append src array to dst
@@ -419,7 +419,7 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
         }
       }
     }
-    // fallthru
+    return 0;
   default:
     break;
   }

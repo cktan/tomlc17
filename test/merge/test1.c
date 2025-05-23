@@ -1,11 +1,16 @@
 #include "../../src/tomlc17.c"
 #include <inttypes.h>
 
+static void failed() {
+  printf("FAILED\n");
+  exit(1);
+}
+
 #define CHECK(x)                                                               \
   if (x)                                                                       \
     ;                                                                          \
   else                                                                         \
-    (void)0
+    failed()
 
 static void check(const char *doc1, const char *doc2, const char *expected) {
   toml_result_t r1 = toml_parse(doc1, strlen(doc1));
