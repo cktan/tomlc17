@@ -46,9 +46,10 @@ struct toml_datum_t {
     double fp64;   // float
     bool boolean;
     struct { // date, time
-      int32_t year, month, day;
-      int32_t hour, minute, second, usec;
-      int32_t tz; // in minutes
+      int16_t year, month, day;
+      int16_t hour, minute, second;
+      int32_t usec;
+      int16_t tz; // in minutes
     } ts;
     struct {        // array
       int32_t size; // count elem
@@ -136,6 +137,10 @@ static inline toml_datum_t toml_table_find(toml_datum_t table,
 TOML_EXTERN toml_result_t toml_merge(const toml_result_t *r1,
                                      const toml_result_t *r2);
 
+/**
+ *  Check if two results are the same. Dictinary and array orders are
+ *  sensitive.
+ */
 TOML_EXTERN bool toml_equiv(const toml_result_t *r1, const toml_result_t *r2);
 
 /* Options that override tomlc17 defaults globally */
@@ -147,7 +152,7 @@ struct toml_option_t {
 };
 
 /**
- * Get the default options. IF necessary, use this to initialize
+ * Get the default options. IF NECESSARY, use this to initialize
  * toml_option_t and override values before calling
  * toml_set_option().
  */
