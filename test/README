@@ -1,0 +1,5 @@
+scankey   : test scanner on keys 
+scanvalue : test scanner on values
+parser    : test parser
+merge     : test the toml_merge function
+stdtest   : the official regression tests
