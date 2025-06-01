@@ -36,6 +36,7 @@ install: all
 	install -d ${prefix}/lib
 	install -d ${prefix}/lib/pkgconfig
 	install -m 0644 -t ${prefix}/include src/tomlc17.h
+	install -m 0644 -t ${prefix}/include src/tomlcpp.hpp
 	install -m 0644 -t ${prefix}/lib src/libtomlc17.a
 	@echo "$$PCFILE" >> ${prefix}/lib/pkgconfig/tomlc17.pc
 

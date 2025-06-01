@@ -5,7 +5,7 @@ EXEC = test1
 all: $(EXEC)
 
 test1: test1.c
-	$(CC) $(CFLAGS) -o $@ test1.c
+	$(CC) $(CFLAGS) -o $@ $@.c
 
 test: all
 	@echo

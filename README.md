@@ -4,6 +4,7 @@ TOML v1.0 in c17.
 
 * Compatible with C99.
 * Compatible with C++.
+* Implements [C++ Accessors](README_CXX.md).
 * Implements [TOML v1.0.0](https://toml.io/en/v1.0.0).
 * Passes the [standard test suites](https://github.com/toml-lang/toml-test/).
 
@@ -80,6 +81,7 @@ int main() {
   return 0;
 }
 ```
+
 
 ## Building
 

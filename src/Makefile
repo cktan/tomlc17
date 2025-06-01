@@ -34,7 +34,7 @@ clean:
 distclean: clean
 
 format:
-	clang-format -i *.[ch]
+	clang-format -i *.[ch] *.hpp
 
 
 .PHONY: all clean distclean format

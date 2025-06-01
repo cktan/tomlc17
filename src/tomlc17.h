@@ -14,7 +14,6 @@
 #define TOML_EXTERN extern
 #endif
 
-typedef enum toml_type_t toml_type_t;
 enum toml_type_t {
   TOML_UNKNOWN = 0,
   TOML_STRING,
@@ -28,6 +27,7 @@ enum toml_type_t {
   TOML_ARRAY,
   TOML_TABLE,
 };
+typedef enum toml_type_t toml_type_t;
 
 /* This is a Node in a Tree that represents a toml document rooted
  * at toml_result_t::toptab.
