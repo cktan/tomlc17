@@ -122,7 +122,7 @@ invalid tests: 371 passed,  0 failed
 
 ## Installing
 
-The install command will copy `tomlc17.h` and `libtomlc17.a` to the `$prefix/include` and `$prefix/lib` directories.
+The install command will copy `tomlc17.h`, `tomlcpp.hpp` and `libtomlc17.a` to the `$prefix/include` and `$prefix/lib` directories.
 
 ```bash
 unset DEBUG
