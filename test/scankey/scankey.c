@@ -18,7 +18,7 @@ static void printspecial(const char *p, int n) {
 
 static void printtok(char *content, const token_t tok) {
   // clang-format off
-#define CASESTR(x) case x: s = #x; break
+#define CASESTR(x) case TOK_ ## x: s = #x; break
   // clang-format on
   char *s = 0;
   switch (tok.toktyp) {
@@ -111,7 +111,7 @@ int main(int argc, const char *argv[]) {
     if (scan_key(sp, &tok)) {
       break;
     }
-    if (tok.toktyp == FIN) {
+    if (tok.toktyp == TOK_FIN) {
       break;
     }
     printtok(content, tok);

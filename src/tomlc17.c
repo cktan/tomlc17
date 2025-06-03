@@ -122,29 +122,29 @@ static int ucs_to_utf8(uint32_t code, char buf[4]);
 static inline size_t align8(size_t x) { return (((x) + 7) & ~7); }
 
 enum toktyp_t {
-  DOT = 1,
-  EQUAL,
-  COMMA,
-  LBRACK,
-  LLBRACK,
-  RBRACK,
-  RRBRACK,
-  LBRACE,
-  RBRACE,
-  LIT,
-  STRING,
-  MLSTRING,
-  LITSTRING,
-  MLLITSTRING,
-  TIME,
-  DATE,
-  DATETIME,
-  DATETIMETZ,
-  INTEGER,
-  FLOAT,
-  BOOL,
-  ENDL,
-  FIN = -5000, // EOF
+  TOK_DOT = 1,
+  TOK_EQUAL,
+  TOK_COMMA,
+  TOK_LBRACK,
+  TOK_LLBRACK,
+  TOK_RBRACK,
+  TOK_RRBRACK,
+  TOK_LBRACE,
+  TOK_RBRACE,
+  TOK_LIT,
+  TOK_STRING,
+  TOK_MLSTRING,
+  TOK_LITSTRING,
+  TOK_MLLITSTRING,
+  TOK_TIME,
+  TOK_DATE,
+  TOK_DATETIME,
+  TOK_DATETIMETZ,
+  TOK_INTEGER,
+  TOK_FLOAT,
+  TOK_BOOL,
+  TOK_ENDL,
+  TOK_FIN = -5000, // EOF
 };
 typedef enum toktyp_t toktyp_t;
 typedef struct scanner_t scanner_t;
@@ -728,18 +728,18 @@ toml_result_t toml_parse(const char *src, int len) {
       goto bail;
     }
     // break on FIN
-    if (tok.toktyp == FIN) {
+    if (tok.toktyp == TOK_FIN) {
       break;
     }
     switch (tok.toktyp) {
-    case ENDL: // skip blank lines
+    case TOK_ENDL: // skip blank lines
       continue;
-    case LBRACK:
+    case TOK_LBRACK:
       if (parse_std_table_expr(pp, tok)) {
         goto bail;
       }
       break;
-    case LLBRACK:
+    case TOK_LLBRACK:
       if (parse_array_table_expr(pp, tok)) {
         goto bail;
       }
@@ -755,7 +755,7 @@ toml_result_t toml_parse(const char *src, int len) {
     if (scan_key(&pp->scanner, &tok)) {
       goto bail;
     }
-    if (tok.toktyp == FIN || tok.toktyp == ENDL) {
+    if (tok.toktyp == TOK_FIN || tok.toktyp == TOK_ENDL) {
       continue;
     }
     ERROR(pp->ebuf, tok.lineno, "ENDL expected");
@@ -840,7 +840,7 @@ static int token_to_datetimetz(parser_t *pp, token_t tok, toml_datum_t *ret) {
 // Convert an int64 token to a datum.
 static int token_to_int64(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
-  assert(tok.toktyp == INTEGER);
+  assert(tok.toktyp == TOK_INTEGER);
   *ret = mkdatum(TOML_INT64);
   ret->u.int64 = tok.u.int64;
   return 0;
@@ -849,7 +849,7 @@ static int token_to_int64(parser_t *pp, token_t tok, toml_datum_t *ret) {
 // Convert a fp64 token to a datum.
 static int token_to_fp64(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
-  assert(tok.toktyp == FLOAT);
+  assert(tok.toktyp == TOK_FLOAT);
   *ret = mkdatum(TOML_FP64);
   ret->u.fp64 = tok.u.fp64;
   return 0;
@@ -858,7 +858,7 @@ static int token_to_fp64(parser_t *pp, token_t tok, toml_datum_t *ret) {
 // Convert a boolean token to a datum.
 static int token_to_boolean(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
-  assert(tok.toktyp == BOOL);
+  assert(tok.toktyp == TOK_BOOL);
   *ret = mkdatum(TOML_BOOLEAN);
   ret->u.boolean = tok.u.b1;
   return 0;
@@ -870,7 +870,7 @@ static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart) {
   // key = simple-key | dotted_key
   // simple-key = STRING | LITSTRING | LIT
   // dotted-key = simple-key (DOT simple-key)+
-  if (tok.toktyp != STRING && tok.toktyp != LITSTRING && tok.toktyp != LIT) {
+  if (tok.toktyp != TOK_STRING && tok.toktyp != TOK_LITSTRING && tok.toktyp != TOK_LIT) {
     return ERROR(pp->ebuf, tok.lineno, "missing key");
   }
 
@@ -892,7 +892,7 @@ static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart) {
     DO(scan_key(&pp->scanner, &tok));
 
     // If not a dot, we are done with keyparts.
-    if (tok.toktyp != DOT) {
+    if (tok.toktyp != TOK_DOT) {
       scan_restore(&pp->scanner, mark);
       break;
     }
@@ -900,7 +900,7 @@ static int parse_key(parser_t *pp, token_t tok, keypart_t *ret_keypart) {
     // Scan the n-th key
     DO(scan_key(&pp->scanner, &tok));
 
-    if (tok.toktyp != STRING && tok.toktyp != LITSTRING && tok.toktyp != LIT) {
+    if (tok.toktyp != TOK_STRING && tok.toktyp != TOK_LITSTRING && tok.toktyp != TOK_LIT) {
       return ERROR(pp->ebuf, tok.lineno, "expects a string in dotted-key");
     }
 
@@ -1005,7 +1005,7 @@ static void set_flag_recursive(toml_datum_t *datum, uint32_t flag) {
 // Parse an inline array.
 static int parse_inline_array(parser_t *pp, token_t tok,
                               toml_datum_t *ret_datum) {
-  assert(tok.toktyp == LBRACK);
+  assert(tok.toktyp == TOK_LBRACK);
   *ret_datum = mkdatum(TOML_ARRAY);
   int need_comma = 0;
 
@@ -1014,15 +1014,15 @@ static int parse_inline_array(parser_t *pp, token_t tok,
     // skip ENDL
     do {
       DO(scan_value(&pp->scanner, &tok));
-    } while (tok.toktyp == ENDL);
+    } while (tok.toktyp == TOK_ENDL);
 
     // If got an RBRACK: done!
-    if (tok.toktyp == RBRACK) {
+    if (tok.toktyp == TOK_RBRACK) {
       break;
     }
 
     // If got a COMMA: check if it is expected.
-    if (tok.toktyp == COMMA) {
+    if (tok.toktyp == TOK_COMMA) {
       if (need_comma) {
         need_comma = 0;
         continue;
@@ -1061,7 +1061,7 @@ static int parse_inline_array(parser_t *pp, token_t tok,
 // Parse an inline table.
 static int parse_inline_table(parser_t *pp, token_t tok,
                               toml_datum_t *ret_datum) {
-  assert(tok.toktyp == LBRACE);
+  assert(tok.toktyp == TOK_LBRACE);
   *ret_datum = mkdatum(TOML_TABLE);
   bool need_comma = 0;
   bool was_comma = 0;
@@ -1071,7 +1071,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     DO(scan_key(&pp->scanner, &tok));
 
     // Got an RBRACE: done!
-    if (tok.toktyp == RBRACE) {
+    if (tok.toktyp == TOK_RBRACE) {
       if (was_comma) {
         return ERROR(pp->ebuf, tok.lineno, "extra comma before closing brace");
       }
@@ -1079,7 +1079,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     }
 
     // Got a comma: check if it is expected.
-    if (tok.toktyp == COMMA) {
+    if (tok.toktyp == TOK_COMMA) {
       if (need_comma) {
         need_comma = 0, was_comma = 1;
         continue;
@@ -1093,7 +1093,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     }
 
     // Newline not allowed in inline table.
-    if (tok.toktyp == ENDL) {
+    if (tok.toktyp == TOK_ENDL) {
       return ERROR(pp->ebuf, tok.lineno, "unexpected newline");
     }
 
@@ -1121,8 +1121,8 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     // match EQUAL
     DO(scan_value(&pp->scanner, &tok));
 
-    if (tok.toktyp != EQUAL) {
-      if (tok.toktyp == ENDL) {
+    if (tok.toktyp != TOK_EQUAL) {
+      if (tok.toktyp == TOK_ENDL) {
         return ERROR(pp->ebuf, tok.lineno, "unexpected newline");
       } else {
         return ERROR(pp->ebuf, tok.lineno, "missing '='");
@@ -1150,28 +1150,28 @@ static int parse_inline_table(parser_t *pp, token_t tok,
 static int parse_val(parser_t *pp, token_t tok, toml_datum_t *ret) {
   // val = string / boolean / array / inline-table / date-time / float / integer
   switch (tok.toktyp) {
-  case STRING:
-  case MLSTRING:
-  case LITSTRING:
-  case MLLITSTRING:
+  case TOK_STRING:
+  case TOK_MLSTRING:
+  case TOK_LITSTRING:
+  case TOK_MLLITSTRING:
     return token_to_string(pp, tok, ret);
-  case TIME:
+  case TOK_TIME:
     return token_to_time(pp, tok, ret);
-  case DATE:
+  case TOK_DATE:
     return token_to_date(pp, tok, ret);
-  case DATETIME:
+  case TOK_DATETIME:
     return token_to_datetime(pp, tok, ret);
-  case DATETIMETZ:
+  case TOK_DATETIMETZ:
     return token_to_datetimetz(pp, tok, ret);
-  case INTEGER:
+  case TOK_INTEGER:
     return token_to_int64(pp, tok, ret);
-  case FLOAT:
+  case TOK_FLOAT:
     return token_to_fp64(pp, tok, ret);
-  case BOOL:
+  case TOK_BOOL:
     return token_to_boolean(pp, tok, ret);
-  case LBRACK: // inline-array
+  case TOK_LBRACK: // inline-array
     return parse_inline_array(pp, tok, ret);
-  case LBRACE: // inline-table
+  case TOK_LBRACE: // inline-table
     return parse_inline_table(pp, tok, ret);
   default:
     break;
@@ -1185,7 +1185,7 @@ static int parse_val(parser_t *pp, token_t tok, toml_datum_t *ret) {
 static int parse_std_table_expr(parser_t *pp, token_t tok) {
   // std-table = [ key ]
   // Eat the [
-  assert(tok.toktyp == LBRACK); // [ ate by caller
+  assert(tok.toktyp == TOK_LBRACK); // [ ate by caller
 
   // Read the first keypart
   DO(scan_key(&pp->scanner, &tok));
@@ -1197,7 +1197,7 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
 
   // Eat the ]
   DO(scan_key(&pp->scanner, &tok));
-  if (tok.toktyp != RBRACK) {
+  if (tok.toktyp != TOK_RBRACK) {
     return ERROR(pp->ebuf, tok.lineno, "missing right-bracket");
   }
 
@@ -1265,7 +1265,7 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
 // like [[a.b.c.d]].
 static int parse_array_table_expr(parser_t *pp, token_t tok) {
   // array-table = [[ key ]]
-  assert(tok.toktyp == LLBRACK); // [[ ate by caller
+  assert(tok.toktyp == TOK_LLBRACK); // [[ ate by caller
 
   // Read the first keypart
   DO(scan_key(&pp->scanner, &tok));
@@ -1277,7 +1277,7 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   // eat the ]]
   token_t rrb;
   DO(scan_key(&pp->scanner, &rrb));
-  if (rrb.toktyp != RRBRACK) {
+  if (rrb.toktyp != TOK_RRBRACK) {
     return ERROR(pp->ebuf, rrb.lineno, "missing ']]'");
   }
 
@@ -1376,7 +1376,7 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
 
   // match the '='
   DO(scan_key(&pp->scanner, &tok));
-  if (tok.toktyp != EQUAL) {
+  if (tok.toktyp != TOK_EQUAL) {
     return ERROR(pp->ebuf, tok.lineno, "expect '='");
   }
 
@@ -1454,14 +1454,14 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
   ret_span->len = tok.str.len;
 
   switch (tok.toktyp) {
-  case LIT:
-  case LITSTRING:
-  case MLLITSTRING:
+  case TOK_LIT:
+  case TOK_LITSTRING:
+  case TOK_MLLITSTRING:
     // no need to handle escape chars
     return 0;
 
-  case STRING:
-  case MLSTRING:
+  case TOK_STRING:
+  case TOK_MLSTRING:
     // need to handle escape chars
     break;
 
@@ -1559,7 +1559,7 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
 
 // Get the next char
 static int scan_get(scanner_t *sp) {
-  int ret = FIN;
+  int ret = TOK_FIN;
   const char *p = sp->cur;
   if (p < sp->endp) {
     ret = *p++;
@@ -1654,7 +1654,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
     S_GET();
   }
 
-  *tok = mktoken(sp, MLSTRING);
+  *tok = mktoken(sp, TOK_MLSTRING);
   // scan until terminating """
   while (1) {
     if (S_MATCH3('"')) {
@@ -1672,7 +1672,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
       }
     }
     int ch = S_GET();
-    if (ch == FIN) {
+    if (ch == TOK_FIN) {
       return ERROR(sp->ebuf, sp->lineno, "unterminated \"\"\"");
     }
     // If non-escaped char ...
@@ -1702,7 +1702,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
       // Although the spec does not allow for whitespace following a
       // line-ending backslash, some standard tests expect it.
       // Skip whitespace till EOL.
-      while (ch != FIN && ch && strchr(" \t", ch)) {
+      while (ch != TOK_FIN && ch && strchr(" \t", ch)) {
         ch = S_GET();
       }
       if (ch != '\n') {
@@ -1736,10 +1736,10 @@ static int scan_string(scanner_t *sp, token_t *tok) {
   S_GET(); // skip opening "
 
   // scan until closing "
-  *tok = mktoken(sp, STRING);
+  *tok = mktoken(sp, TOK_STRING);
   while (!S_MATCH('"')) {
     int ch = S_GET();
-    if (ch == FIN) {
+    if (ch == TOK_FIN) {
       return ERROR(sp->ebuf, sp->lineno, "unterminated string");
     }
     // If non-escaped char ...
@@ -1784,7 +1784,7 @@ static int scan_multiline_litstring(scanner_t *sp, token_t *tok) {
   }
 
   // scan until terminating '''
-  *tok = mktoken(sp, MLLITSTRING);
+  *tok = mktoken(sp, TOK_MLLITSTRING);
   while (1) {
     if (S_MATCH3('\'')) {
       if (S_MATCH4('\'')) {
@@ -1801,7 +1801,7 @@ static int scan_multiline_litstring(scanner_t *sp, token_t *tok) {
       }
     }
     int ch = S_GET();
-    if (ch == FIN) {
+    if (ch == TOK_FIN) {
       return ERROR(sp->ebuf, sp->lineno, "unterminated multiline lit string");
     }
     if (!(is_valid_char(ch) || (ch && strchr(" \t\n", ch)))) {
@@ -1823,10 +1823,10 @@ static int scan_litstring(scanner_t *sp, token_t *tok) {
   S_GET(); // skip opening '
 
   // scan until closing '
-  *tok = mktoken(sp, LITSTRING);
+  *tok = mktoken(sp, TOK_LITSTRING);
   while (!S_MATCH('\'')) {
     int ch = S_GET();
-    if (ch == FIN) {
+    if (ch == TOK_FIN) {
       return ERROR(sp->ebuf, sp->lineno, "unterminated string");
     }
     if (!(is_valid_char(ch) || ch == '\t')) {
@@ -1945,7 +1945,7 @@ static int scan_time(scanner_t *sp, token_t *tok) {
     return ERROR(sp->ebuf, lineno, "invalid time");
   }
 
-  *tok = mktoken(sp, TIME);
+  *tok = mktoken(sp, TOK_TIME);
   tok->str.len = len;
   sp->cur += len;
   tok->u.tsval.year = -1;
@@ -1971,7 +1971,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   memcpy(buffer, sp->cur, len);
   buffer[len] = 0; // NUL
 
-  toktyp_t toktyp = FIN;
+  toktyp_t toktyp = TOK_FIN;
   int lineno = sp->lineno;
   const char *p = buffer;
   if (isdigit(p[0]) && isdigit(p[1]) && p[2] == ':') {
@@ -1980,7 +1980,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
     if (!n) {
       return ERROR(sp->ebuf, lineno, "invalid time");
     }
-    toktyp = TIME;
+    toktyp = TOK_TIME;
     p += n;
     goto done;
   }
@@ -1990,7 +1990,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   if (!n) {
     return ERROR(sp->ebuf, lineno, "invalid date");
   }
-  toktyp = DATE;
+  toktyp = TOK_DATE;
   p += n;
   if (!((p[0] == 'T' || p[0] == ' ' || p[0] == 't') && isdigit(p[1]) &&
         isdigit(p[2]) && p[3] == ':')) {
@@ -2001,7 +2001,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   if (!n) {
     return ERROR(sp->ebuf, lineno, "invalid timestamp");
   }
-  toktyp = DATETIME;
+  toktyp = TOK_DATETIME;
   p += 1 + n;
   char tzsign;
   int tzhour, tzminute;
@@ -2009,7 +2009,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   if (n == 0) {
     goto done; // datetime only
   }
-  toktyp = DATETIMETZ;
+  toktyp = TOK_DATETIMETZ;
   p += n;
   if (!(0 <= tzminute && tzminute <= 60)) {
     return ERROR(sp->ebuf, lineno, "invalid timezone");
@@ -2033,25 +2033,25 @@ done:
   tok->u.tsval.tz = tz;
 
   switch (tok->toktyp) {
-  case TIME:
+  case TOK_TIME:
     if (!is_valid_time(hour, minute, sec, usec)) {
       return ERROR(sp->ebuf, lineno, "invalid time");
     }
     break;
-  case DATE:
+  case TOK_DATE:
     if (!is_valid_date(year, month, day)) {
       return ERROR(sp->ebuf, lineno, "invalid date");
     }
     break;
-  case DATETIME:
-  case DATETIMETZ:
+  case TOK_DATETIME:
+  case TOK_DATETIMETZ:
     if (!is_valid_date(year, month, day)) {
       return ERROR(sp->ebuf, lineno, "invalid date");
     }
     if (!is_valid_time(hour, minute, sec, usec)) {
       return ERROR(sp->ebuf, lineno, "invalid time");
     }
-    if (tok->toktyp == DATETIMETZ && !is_valid_timezone(tz)) {
+    if (tok->toktyp == TOK_DATETIMETZ && !is_valid_timezone(tz)) {
       return ERROR(sp->ebuf, lineno, "invalid timezone");
     }
     break;
@@ -2152,7 +2152,7 @@ static int scan_float(scanner_t *sp, token_t *tok) {
     return ERROR(sp->ebuf, lineno, "error parsing float");
   }
 
-  *tok = mktoken(sp, FLOAT);
+  *tok = mktoken(sp, TOK_FLOAT);
   tok->u.fp64 = fp64;
   tok->str.len = len;
   sp->cur += len;
@@ -2201,7 +2201,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
       }
 
       // use strtoll to obtain the value
-      *tok = mktoken(sp, INTEGER);
+      *tok = mktoken(sp, TOK_INTEGER);
       errno = 0;
       tok->u.int64 = strtoll(buffer + 2, &q, base);
       if (errno || *q || q == buffer + 2) {
@@ -2231,7 +2231,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
     return ERROR(sp->ebuf, lineno, reason);
   }
 
-  *tok = mktoken(sp, INTEGER);
+  *tok = mktoken(sp, TOK_INTEGER);
   errno = 0;
   tok->u.int64 = strtoll(buffer, &q, 10);
   if (errno || *q || q == buffer) {
@@ -2272,7 +2272,7 @@ static int scan_bool(scanner_t *sp, token_t *tok) {
   }
 
   len = p - buffer;
-  *tok = mktoken(sp, BOOL);
+  *tok = mktoken(sp, TOK_BOOL);
   tok->u.b1 = val;
   tok->str.len = len;
   sp->cur += len;
@@ -2331,7 +2331,7 @@ static int scan_nonstring_literal(scanner_t *sp, token_t *tok) {
 
 // Scan a literal
 static int scan_literal(scanner_t *sp, token_t *tok) {
-  *tok = mktoken(sp, LIT);
+  *tok = mktoken(sp, TOK_LIT);
   const char *p = sp->cur;
   while (p < sp->endp && (isalnum(*p) || *p == '_' || *p == '-')) {
     p++;
@@ -2360,20 +2360,20 @@ static void scan_restore(scanner_t *sp, scanner_state_t mark) {
 // Return the next token
 static int scan_next(scanner_t *sp, bool keymode, token_t *tok) {
 again:
-  *tok = mktoken(sp, FIN);
+  *tok = mktoken(sp, TOK_FIN);
   if (sp->errmsg) {
     return -1;
   }
 
   int ch = S_GET();
-  if (ch == FIN) {
+  if (ch == TOK_FIN) {
     return 0;
   }
 
   tok->str.len = 1;
   switch (ch) {
   case '\n':
-    tok->toktyp = ENDL;
+    tok->toktyp = TOK_ENDL;
     break;
 
   case ' ':
@@ -2384,7 +2384,7 @@ again:
     // comment: skip until newline
     while (!S_MATCH('\n')) {
       ch = S_GET();
-      if (ch == FIN)
+      if (ch == TOK_FIN)
         break;
       if ((0 <= ch && ch <= 0x8) || (0x0a <= ch && ch <= 0x1f) ||
           (ch == 0x7f)) {
@@ -2394,41 +2394,41 @@ again:
     goto again; // skip comment
 
   case '.':
-    tok->toktyp = DOT;
+    tok->toktyp = TOK_DOT;
     break;
 
   case '=':
-    tok->toktyp = EQUAL;
+    tok->toktyp = TOK_EQUAL;
     break;
 
   case ',':
-    tok->toktyp = COMMA;
+    tok->toktyp = TOK_COMMA;
     break;
 
   case '[':
-    tok->toktyp = LBRACK;
+    tok->toktyp = TOK_LBRACK;
     if (keymode && S_MATCH('[')) {
       S_GET();
-      tok->toktyp = LLBRACK;
+      tok->toktyp = TOK_LLBRACK;
       tok->str.len = 2;
     }
     break;
 
   case ']':
-    tok->toktyp = RBRACK;
+    tok->toktyp = TOK_RBRACK;
     if (keymode && S_MATCH(']')) {
       S_GET();
-      tok->toktyp = RRBRACK;
+      tok->toktyp = TOK_RRBRACK;
       tok->str.len = 2;
     }
     break;
 
   case '{':
-    tok->toktyp = LBRACE;
+    tok->toktyp = TOK_LBRACE;
     break;
 
   case '}':
-    tok->toktyp = RBRACE;
+    tok->toktyp = TOK_RBRACE;
     break;
 
   case '"':

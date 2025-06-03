@@ -19,7 +19,7 @@ static void printspecial(const char *p, int n) {
 
 static void printtok(char *content, const token_t tok) {
   // clang-format off
-#define CASESTR(x) case x: s = #x; break
+#define CASESTR(x) case TOK_ ## x: s = #x; break
   // clang-format on
   char *s = 0;
   switch (tok.toktyp) {
@@ -52,14 +52,14 @@ static void printtok(char *content, const token_t tok) {
   printspecial(tok.str.ptr, tok.str.len);
 
   switch (tok.toktyp) {
-  case INTEGER:
+  case TOK_INTEGER:
     printf(" %" PRId64, tok.u.int64);
     break;
-  case FLOAT:
+  case TOK_FLOAT:
     printf(" %.16g%s", tok.u.fp64,
            (tok.u.fp64 - (int64_t)tok.u.fp64 == 0) ? ".0" : "");
     break;
-  case BOOL:
+  case TOK_BOOL:
     printf(" %s", tok.u.b1 ? "true" : "false");
     break;
   default:
@@ -129,7 +129,7 @@ int main(int argc, const char *argv[]) {
       printf("%s\n", errbuf);
       return -1;
     }
-    if (tok.toktyp == FIN) {
+    if (tok.toktyp == TOK_FIN) {
       break;
     }
     printtok(content, tok);

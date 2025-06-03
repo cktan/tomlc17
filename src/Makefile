@@ -26,7 +26,7 @@ $(LIB_SHARED): tomlc17.o
 
 -include $(OBJ:%.o=%.d) $(EXEC:%=%.d)
 
-test:
+test: all
 
 clean:
 	rm -f *.o *.d *.a *.so.* $(EXEC)
