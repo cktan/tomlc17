@@ -12,7 +12,6 @@
 
 namespace toml {
 
-
 class Datum : public toml_datum_t {
 public:
   using datetime = std::chrono::sys_time<std::chrono::microseconds>;
@@ -164,9 +163,7 @@ public:
   }
 
   // Retrieve the value of a key
-  std::optional<Datum> get(std::string_view key) const {
-    return get({key});
-  }
+  std::optional<Datum> get(std::string_view key) const { return get({key}); }
 
 }; // class Datum
 

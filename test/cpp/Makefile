@@ -44,6 +44,6 @@ clean:
 distclean: clean
 
 format:
-	clang-format -i *.[ch]
+	clang-format -i *.cpp
 
 .PHONY: all clean distclean format test
