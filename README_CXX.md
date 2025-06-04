@@ -2,7 +2,12 @@
 
 ## Usage
 
-Convenient routines are provided to facilitate extraction of values from parsed result. 
+Convenient routines are provided to facilitate extraction of values from parsed result. Notably:
+
+- provides direct access to values in subtables,
+- utilizes C++ `std::optional` construct that throws exception on bad access,
+- represents time and date using C++ `std::chrono` objects, and
+- converts datum arrays into integer or string vectors.
 
 Here is a simple example:
 
@@ -41,16 +46,17 @@ int main() {
   std::vector<int64_t> port;
 
   try {
-    host = *(*toptab.get({"server", "host"})).as_str();
-  } catch (const std::bad_optional_access& ex) {
+    host = *toptab.get({"server", "host"})->as_str();
+  } catch (const std::bad_optional_access &ex) {
     error("missing or invalid 'server.host' property in config");
   }
 
   try {
-    port = *(*toptab.get({"server", "port"})).as_intvec();
-  } catch (const std::bad_optional_access& ex) {
+    port = *toptab.get({"server", "port"})->as_intvec();
+  } catch (const std::bad_optional_access &ex) {
     error("missing or invalid 'server.port' property in config");
   }
+
 
   // Print values
   cout << "server.host = " << host << "\n";
