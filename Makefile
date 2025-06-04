@@ -1,7 +1,8 @@
 .NOTPARALLEL:
 
 prefix ?= /usr/local
-override prefix := $(prefix:%/=%)  # remove trailing /
+# remove trailing /
+override prefix := $(prefix:%/=%)
 DIRS = src simple test
 
 BUILDDIRS = $(DIRS:%=build-%)
