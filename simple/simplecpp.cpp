@@ -32,13 +32,13 @@ int main() {
   std::vector<int64_t> port;
 
   try {
-    host = *(*toptab.get({"server", "host"})).as_str();
+    host = *toptab.get({"server", "host"})->as_str();
   } catch (const std::bad_optional_access &ex) {
     error("missing or invalid 'server.host' property in config");
   }
 
   try {
-    port = *(*toptab.get({"server", "port"})).as_intvec();
+    port = *toptab.get({"server", "port"})->as_intvec();
   } catch (const std::bad_optional_access &ex) {
     error("missing or invalid 'server.port' property in config");
   }
