@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: install toml-test
+      run: go install github.com/toml-lang/toml-test/cmd/toml-test@latest
     - name: make clean all
       run: make clean all
     - name: make test
