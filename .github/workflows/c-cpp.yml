@@ -21,4 +21,4 @@ jobs:
     - name: make test
       run: make test
     - name: make install
-      run: make install -prefix=/tmp
+      run: make install prefix=./tmp
