@@ -27,7 +27,9 @@ endif
 
 -include simple.d simplecpp.d
 
-test:
+test: all
+	./simple > /dev/null
+	[ ! -x ./simplecpp ] || ./simplecpp > /dev/null
 
 clean:
 	rm -f *.o *.d *.a $(EXEC)
