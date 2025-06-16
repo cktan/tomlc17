@@ -27,6 +27,9 @@ endif
 
 -include simple.d simplecpp.d
 
+simpleodin: simple.odin
+	odin build . -out:$@
+
 test: all
 	./simple > /dev/null
 	[ ! -x ./simplecpp ] || ./simplecpp > /dev/null

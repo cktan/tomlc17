@@ -2,3 +2,5 @@
 *.o
 *.d
 *.a
+!bindings/odin/**/*.a
+!bindings/odin/**/*.lib
