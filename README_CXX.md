@@ -46,17 +46,18 @@ int main() {
   std::vector<int64_t> port;
 
   try {
+    // use the Datum::get() method
     host = *toptab.get({"server", "host"})->as_str();
   } catch (const std::bad_optional_access &ex) {
     error("missing or invalid 'server.host' property in config");
   }
 
   try {
-    port = *toptab.get({"server", "port"})->as_intvec();
+    // use the Datum::seek() method
+    port = *toptab.seek("server.port")->as_intvec();
   } catch (const std::bad_optional_access &ex) {
     error("missing or invalid 'server.port' property in config");
   }
-
 
   // Print values
   cout << "server.host = " << host << "\n";
