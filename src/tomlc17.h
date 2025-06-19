@@ -106,6 +106,16 @@ TOML_EXTERN void toml_free(toml_result_t result);
 TOML_EXTERN toml_datum_t toml_get(toml_datum_t table, const char *key);
 
 /**
+ * Locate a value starting from a toml_table. Return the value of the key if
+ * found, or a TOML_UNKNOWN otherwise.
+ *
+ * Note: the multipart-key is separated by DOT, and must not have any escape
+ * chars.
+ */
+TOML_EXTERN toml_datum_t toml_seek(toml_datum_t table,
+                                   const char *multipart_key);
+
+/**
  * OBSOLETE: use toml_get() instead.
  * Find a key in a toml_table. Return the value of the key if found,
  * or a TOML_UNKNOWN otherwise. (

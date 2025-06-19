@@ -165,6 +165,15 @@ public:
   // Retrieve the value of a key
   std::optional<Datum> get(std::string_view key) const { return get({key}); }
 
+  // Retrieve the value of a multi-part key
+  std::optional<Datum> seek(const char *multipart_key) const {
+    auto ret = toml_seek(*this, multipart_key);
+    if (!ret.type) {
+      return std::nullopt;
+    }
+    return ret;
+  }
+
 }; // class Datum
 
 }; // namespace toml

@@ -56,5 +56,5 @@ $(CLEANDIRS):
 $(FORMATDIRS):
 	$(MAKE) -C $(@:format-%=%) format
 
-.PHONY: $(DIRS) $(BUILDDIRS) $(CLEANDIRS) $(FORMATDIRS)
-.PHONY: all install format test
+.PHONY: $(DIRS) $(BUILDDIRS) $(TESTDIRS) $(CLEANDIRS) $(FORMATDIRS)
+.PHONY: all install tet format clean

@@ -15,10 +15,10 @@ HAVE_CXX := $(shell command -v $(CXX) 2> /dev/null)
 
 all: $(EXEC)
 
-simple: simple.c
+simple: simple.c ../src/libtomlc17.a
 	$(CC) $(CFLAGS) -o $@ $@.c -L../src -ltomlc17
 
-simplecpp: simplecpp.cpp
+simplecpp: simplecpp.cpp ../src/libtomlc17.a
 ifndef HAVE_CXX
 	@echo "INFO: skipping $@ because no $(CXX) compiler found"
 else

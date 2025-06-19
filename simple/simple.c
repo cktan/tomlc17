@@ -26,9 +26,8 @@ int main() {
   }
 
   // Extract values
-  toml_datum_t server = toml_get(result.toptab, "server");
-  toml_datum_t host = toml_get(server, "host");
-  toml_datum_t port = toml_get(server, "port");
+  toml_datum_t host = toml_seek(result.toptab, "server.host");
+  toml_datum_t port = toml_seek(result.toptab, "server.port");
 
   // Print server.host
   if (host.type != TOML_STRING) {

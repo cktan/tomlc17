@@ -579,6 +579,41 @@ toml_datum_t toml_get(toml_datum_t datum, const char *key) {
 }
 
 /**
+ * Locate a value starting from a toml_table. Return the value of the key if
+ * found, or a TOML_UNKNOWN otherwise.
+ *
+ * Note: the multipart-key is separated by DOT, and must not have any escape
+ * chars.
+ */
+toml_datum_t toml_seek(toml_datum_t table, const char *multipart_key) {
+  if (table.type != TOML_TABLE) {
+    return DATUM_ZERO;
+  }
+
+  int bufsz = strlen(multipart_key) + 1;
+  char buf[bufsz];
+  memcpy(buf, multipart_key, bufsz);
+
+  char *p = buf;
+  char *q = strchr(p, '.');
+  toml_datum_t datum = table;
+  while (q && datum.type == TOML_TABLE) {
+    *q = 0;
+    datum = toml_get(datum, p);
+    if (datum.type == TOML_TABLE) {
+      p = q + 1;
+      q = strchr(p, '.');
+    }
+  }
+
+  if (!q && datum.type == TOML_TABLE) {
+    return toml_get(datum, p);
+  }
+
+  return DATUM_ZERO;
+}
+
+/**
  *  Return the default options.
  */
 toml_option_t toml_default_option(void) {

@@ -8,8 +8,6 @@ driver: parser.c
 test: all
 	bash run.sh
 
--include driver.d
-
 clean:
 	rm -f *.o *.d driver
 
@@ -17,5 +15,7 @@ distclean: clean
 
 format:
 	clang-format -i *.[ch]
+
+-include driver.d
 
 .PHONY: all clean distclean format test
