@@ -1,0 +1,15 @@
+inputs = [
+	"../../src"
+]
+
+remove_type_prefix     = "toml_"
+remove_function_prefix = "toml_"
+remove_macro_prefix    = "toml_"
+imports_file = "imports.odin"
+
+output_folder = "toml"
+package_name = "toml"
+
+rename = {
+	"FILE" = "c.FILE"
+}
