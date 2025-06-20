@@ -115,6 +115,15 @@ foreign lib {
 	get :: proc(table: datum_t, key: cstring) -> datum_t ---
 
 	/**
+	* Locate a value starting from a toml_table. Return the value of the key if
+	* found, or a TOML_UNKNOWN otherwise.
+	*
+	* Note: the multipart-key is separated by DOT, and must not have any escape
+	* chars.
+	*/
+	seek :: proc(table: datum_t, multipart_key: cstring) -> datum_t ---
+
+	/**
 	* OBSOLETE: use toml_get() instead.
 	* Find a key in a toml_table. Return the value of the key if found,
 	* or a TOML_UNKNOWN otherwise. (
