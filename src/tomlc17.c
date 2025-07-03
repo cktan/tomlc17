@@ -1956,7 +1956,7 @@ static int read_date(const char *p, int *year, int *month, int *day) {
   return p - pp;
 }
 
-// Read a time as HH:MM:SS.usec from p[]. Return #bytes consumed.
+// Read a time as HH:MM:SS.subsec from p[]. Return #bytes consumed.
 static int read_time(const char *p, int *hour, int *minute, int *second,
                      int *usec) {
   const char *pp = p;
