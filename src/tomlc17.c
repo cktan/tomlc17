@@ -1892,7 +1892,7 @@ static bool is_valid_date(int year, int month, int day) {
   return (1 <= day && day <= days_in_month[month - 1]);
 }
 
-static bool is_valid_time(int hour, int minute, int sec, int64_t usec) {
+static bool is_valid_time(int hour, int minute, int sec, int usec) {
   if (!(0 <= hour && hour <= 23)) {
     return false;
   }
