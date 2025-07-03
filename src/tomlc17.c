@@ -1991,7 +1991,8 @@ static int read_time(const char *p, int *hour, int *minute, int *second,
 // Reads a timezone from p[]. Return #bytes consumed.
 static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
   const char *pp = p;
-  *tzhour = *tzminute = *tzsign = 0;
+  *tzhour = *tzminute = 0;
+  *tzsign = '+';
   // look for Zulu
   if (*p == 'Z' || *p == 'z') {
     return 1;
