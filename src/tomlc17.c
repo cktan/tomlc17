@@ -1880,7 +1880,7 @@ static int scan_litstring(scanner_t *sp, token_t *tok) {
 }
 
 static bool is_valid_date(int year, int month, int day) {
-  if (!(year >= 1)) {
+  if (!(1 <= year)) {
     return false;
   }
   if (!(1 <= month && month <= 12)) {
@@ -1889,7 +1889,7 @@ static bool is_valid_date(int year, int month, int day) {
   int is_leap_year = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
   int days_in_month[] = {
       31, 28 + is_leap_year, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-  return !(day < 1 || day > days_in_month[month - 1]);
+  return (1 <= day && day <= days_in_month[month - 1]);
 }
 
 static bool is_valid_time(int hour, int minute, int sec, int64_t usec) {
@@ -1902,15 +1902,14 @@ static bool is_valid_time(int hour, int minute, int sec, int64_t usec) {
   if (!(0 <= sec && sec <= 59)) {
     return false;
   }
-  if (!(usec >= 0)) {
+  if (!(0 <= usec)) {
     return false;
   }
   return true;
 }
 
 static bool is_valid_timezone(int minute) {
-  int neg = (minute < 0);
-  minute = neg ? -minute : minute;
+  minute = (minute < 0 ? -minute : minute);
   int hour = minute / 60;
   minute = minute % 60;
   if (!(0 <= hour && hour <= 23)) {
@@ -1922,47 +1921,95 @@ static bool is_valid_timezone(int minute) {
   return true;
 }
 
-// Reads a date from p[]. Return #bytes consumed.
-static int read_date(const char *p, int *year, int *month, int *day) {
-  int n;
-  if (3 == sscanf(p, "%4d-%2d-%2d%n", year, month, day, &n) && n == 10) {
-    return n;
+// Read an int from the string p. Return #bytes consumed, i.e. 0 on failure.
+static int read_int(const char *p, int *ret) {
+  char *endp;
+  errno = 0;
+  *ret = strtol(p, &endp, 10);
+  if (errno) {
+    return 0;
   }
-  return 0;
+  return endp - p;
 }
 
-// Reads a time from p[]. Return #bytes consumed.
+// Read a date as YYYY-MM-DD from p[]. Return #bytes consumed.
+static int read_date(const char *p, int *year, int *month, int *day) {
+  int n;
+  n = read_int(p, year);
+  if (n != 4) {
+    return 0;
+  }
+  n = read_int(p += n, month);
+  if (*month >= 0 || n != 3) {
+    return 0;
+  }
+  *month = -(*month);
+  n = read_int(p += n, day);
+  if (*day >= 0 || n != 3) {
+    return 0;
+  }
+  *day = -(*day);
+  return 10;
+}
+
+// Read a time as HH:MM:SS.usec from p[]. Return #bytes consumed.
 static int read_time(const char *p, int *hour, int *minute, int *second,
                      int *usec) {
   const char *pp = p;
   int n;
-  *usec = 0;
-  if (3 == sscanf(p, "%2d:%2d:%2d%n", hour, minute, second, &n) && n == 8) {
-    p += n;
-    if (*p != '.') {
-      return p - pp;
-    }
-    p++; // skip the period
-    int micro_factor = 100000;
-    while (isdigit(*p) && micro_factor) {
-      *usec += (*p - '0') * micro_factor;
-      micro_factor /= 10;
-      p++;
-    }
+  *hour = *minute = *second = *usec = 0;
+  n = read_int(p, hour);
+  if (n != 2 || p[2] != ':') {
+    return 0;
+  }
+  n = read_int(p += 3, minute);
+  if (n != 2 || p[2] != ':') {
+    return 0;
+  }
+  n = read_int(p += 3, second);
+  if (n != 2) {
+    return 0;
+  }
+  p += 2;
+  if (*p != '.') {
     return p - pp;
   }
-  return 0;
+  p++; // skip the period
+  int micro_factor = 100000;
+  while (isdigit(*p) && micro_factor) {
+    *usec += (*p - '0') * micro_factor;
+    micro_factor /= 10;
+    p++;
+  }
+  return p - pp;
 }
 
 // Reads a timezone from p[]. Return #bytes consumed.
 static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
+  const char *pp = p;
   *tzhour = *tzminute = *tzsign = 0;
+  // look for Zulu
   if (*p == 'Z' || *p == 'z') {
     return 1;
   }
+
+  *tzsign = *p++;
+  if (!(*tzsign == '+' || *tzsign == '-')) {
+    return 0;
+  }
+
+  // look for HH:MM
   int n;
-  int cnt = sscanf(p, "%c%2d:%2d%n", tzsign, tzhour, tzminute, &n);
-  return (cnt == 3 && n == 6 && (*tzsign == '+' || *tzsign == '-')) ? n : 0;
+  n = read_int(p, tzhour);
+  if (n != 2 || p[2] != ':') {
+    return 0;
+  }
+  n = read_int(p += 3, tzminute);
+  if (n != 2) {
+    return 0;
+  }
+  p += 2;
+  return p - pp;
 }
 
 static int scan_time(scanner_t *sp, token_t *tok) {
@@ -2037,12 +2084,12 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
     goto done; // date only
   }
 
-  n = read_time(p + 1, &hour, &minute, &sec, &usec);
+  n = read_time(p += 1, &hour, &minute, &sec, &usec);
   if (!n) {
     return RETERROR(sp->ebuf, lineno, "invalid timestamp");
   }
   toktyp = TOK_DATETIME;
-  p += 1 + n;
+  p += n;
   char tzsign;
   int tzhour, tzminute;
   n = read_tzone(p, &tzsign, &tzhour, &tzminute);
