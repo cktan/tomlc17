@@ -1921,35 +1921,39 @@ static bool is_valid_timezone(int minute) {
   return true;
 }
 
-// Read an int from the string p. Return #bytes consumed, i.e. 0 on failure.
+// Read an int (without signs) from the string p.
 static int read_int(const char *p, int *ret) {
-  char *endp;
-  errno = 0;
-  *ret = strtol(p, &endp, 10);
-  if (errno) {
-    return 0;
+  const char *pp = p;
+  int val = 0;
+  for (; isdigit(*p); p++) {
+    val = val * 10 + (*p - '0');
+    if (val < 0) {
+      return 0; // overflowed
+    }
   }
-  return endp - p;
+  *ret = val;
+  return p - pp;
 }
 
 // Read a date as YYYY-MM-DD from p[]. Return #bytes consumed.
 static int read_date(const char *p, int *year, int *month, int *day) {
+  const char *pp = p;
   int n;
   n = read_int(p, year);
-  if (n != 4) {
+  if (n != 4 || p[4] != '-') {
     return 0;
   }
-  n = read_int(p += n, month);
-  if (*month >= 0 || n != 3) {
+  n = read_int(p += n + 1, month);
+  if (n != 2 || p[2] != '-') {
     return 0;
   }
-  *month = -(*month);
-  n = read_int(p += n, day);
-  if (*day >= 0 || n != 3) {
+  n = read_int(p += n + 1, day);
+  if (n != 2) {
     return 0;
   }
-  *day = -(*day);
-  return 10;
+  p += 2;
+  assert(p - pp == 10);
+  return p - pp;
 }
 
 // Read a time as HH:MM:SS.usec from p[]. Return #bytes consumed.
