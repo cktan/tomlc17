@@ -4,6 +4,17 @@
 #ifndef TOMLC17_H
 #define TOMLC17_H
 
+/*
+ *  USAGE:
+ *
+ *  1. Call toml_parse(), toml_parse_file(), or toml_parse_file_ex()
+ *  2. Check result.ok
+ *  3. Use toml_get() or toml_seek() to query and traverse the
+ *     result.toptab
+ *  4. Call toml_free() to release resources.
+ *
+ */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
