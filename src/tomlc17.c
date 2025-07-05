@@ -215,27 +215,43 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
     }
   }
   // Expand pkey[], plen[] and value[]
-  char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
-  int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(N + 1));
-  toml_datum_t *value =
-      REALLOC(tab->u.tab.value, sizeof(*value) * align8(N + 1));
-  if (!pkey || !plen || !value) {
-    *reason = "out of memory";
-    FREE(pkey);
-    FREE(plen);
-    FREE(value);
-    return NULL;
+  {
+    char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
+    if (!pkey) {
+      *reason = "out of memory";
+      FREE(pkey);
+      return NULL;
+    }
+    tab->u.tab.key = (const char **)pkey;
   }
-  tab->u.tab.key = (const char **)pkey;
-  tab->u.tab.len = plen;
-  tab->u.tab.value = value;
+
+  {
+    int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(N + 1));
+    if (!plen) {
+      *reason = "out of memory";
+      FREE(plen);
+      return NULL;
+    }
+    tab->u.tab.len = plen;
+  }
+
+  {
+    toml_datum_t *value =
+        REALLOC(tab->u.tab.value, sizeof(*value) * align8(N + 1));
+    if (!value) {
+      *reason = "out of memory";
+      FREE(value);
+      return NULL;
+    }
+    tab->u.tab.value = value;
+  }
 
   // Append the new key/value
   tab->u.tab.size = N + 1;
-  pkey[N] = (char *)key.ptr;
-  plen[N] = key.len;
-  value[N] = DATUM_ZERO;
-  return &value[N];
+  tab->u.tab.key[N] = (char *)key.ptr;
+  tab->u.tab.len[N] = key.len;
+  tab->u.tab.value[N] = DATUM_ZERO;
+  return &tab->u.tab.value[N];
 }
 
 // Find key in tab and return its index. If not found, return -1.

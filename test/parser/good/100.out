@@ -1,0 +1,35 @@
+{
+  "main": {
+    "wayland_displays": [{"type": "string", "value": "$WAYLAND_DISPLAY"}],
+    "clipboards": [{"type": "string", "value": "Default"}]
+  },
+  "default": {
+    "connection_timeout": {"type": "integer", "value": "500"},
+    "data_timeout": {"type": "integer", "value": "500"},
+    "max_entries": {"type": "integer", "value": "100"},
+    "max_entries_memory": {"type": "integer", "value": "10"}
+  },
+  "wayland_displays": {
+    "$WAYLAND_DISPLAY": {
+      "connection_timeout": {"type": "integer", "value": "500"},
+      "data_timeout": {"type": "integer", "value": "500"},
+      "seats": [{"type": "string", "value": "$XDG_SEAT"}],
+      "$XDG_SEAT": {
+        "clipboard": {"type": "string", "value": "Default"},
+        "regular": {"type": "bool", "value": "true"},
+        "primary": {"type": "bool", "value": "false"}
+      }
+    }
+  },
+  "clipboards": {
+    "Default": {
+      "max_entries": {"type": "integer", "value": "10"},
+      "max_entries_memory": {"type": "integer", "value": "5"},
+      "allowed_mime_types": [{"type": "string", "value": "text/*"}, {"type": "string", "value": "image/*"}],
+      "mime_type_groups": [{
+        "mime_type": {"type": "string", "value": "text/plain;charset=utf-8"},
+        "group": [{"type": "string", "value": "TEXT"}, {"type": "string", "value": "STRING"}, {"type": "string", "value": "UTF8_STRING"}, {"type": "string", "value": "text/plain"}]
+      }]
+    }
+  }
+}

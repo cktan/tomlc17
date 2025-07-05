@@ -6,7 +6,7 @@ echo =========================
 echo == parser test
 echo =========================
 
-for fname in {1..100} array{1..10} tab{1..10} x{1..10} e{1..10}; do
+for fname in {1..200} array{1..10} tab{1..10} x{1..10} e{1..10}; do
     IN="in/$fname.toml"
     if [ -f $IN ]; then
         echo test $fname.toml

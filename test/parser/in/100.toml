@@ -1,0 +1,34 @@
+# Configuration file
+
+[main]
+wayland_displays = [ "$WAYLAND_DISPLAY" ]
+clipboards = [ "Default" ]
+
+
+[default]
+connection_timeout = 500
+data_timeout = 500
+
+max_entries = 100
+max_entries_memory = 10
+
+
+[wayland_displays."$WAYLAND_DISPLAY"]
+connection_timeout = 500
+data_timeout = 500
+seats = [ "$XDG_SEAT" ]
+
+[wayland_displays."$WAYLAND_DISPLAY"."$XDG_SEAT"]
+clipboard = "Default"
+regular = true
+primary = false
+
+
+[clipboards.Default]
+max_entries = 10
+max_entries_memory = 5
+allowed_mime_types = [ "text/*", "image/*" ]
+
+[[clipboards.Default.mime_type_groups]]
+mime_type = "text/plain;charset=utf-8"
+group = [ "TEXT", "STRING", "UTF8_STRING", "text/plain" ]
