@@ -62,15 +62,15 @@ struct toml_datum_t {
       int32_t usec;
       int16_t tz; // in minutes
     } ts;
-    struct {        // array
-      int32_t size; // count elem
-      toml_datum_t *elem;
+    struct {              // array
+      int32_t size;       // count elem
+      toml_datum_t *elem; // elem[] 
     } arr;
-    struct {        // table
-      int32_t size; // count key
-      const char **key;
-      int *len;
-      toml_datum_t *value;
+    struct {               // table
+      int32_t size;        // count key
+      const char **key;    // key[] 
+      int *len;            // len[] 
+      toml_datum_t *value; // value[] 
     } tab;
   } u;
 };
