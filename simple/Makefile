@@ -1,5 +1,5 @@
 CFLAGS = -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
-EXEC = simple simplecpp
+EXEC = simple simplecpp repro
 
 ifdef DEBUG
     CFLAGS += -O0 -g
@@ -17,6 +17,10 @@ all: $(EXEC)
 
 simple: simple.c ../src/libtomlc17.a
 	$(CC) $(CFLAGS) -o $@ $@.c -L../src -ltomlc17
+
+repro: repro.c ../src/libtomlc17.a
+	$(CC) $(CFLAGS) -o $@ $@.c -L../src -ltomlc17
+
 
 simplecpp: simplecpp.cpp ../src/libtomlc17.a
 ifndef HAVE_CXX
