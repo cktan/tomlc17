@@ -820,7 +820,8 @@ toml_result_t toml_parse(const char *src, int len) {
   return result;
 
 bail:
-  // cleanup
+  // return error
+  datum_free(&pp->toptab);
   pool_destroy(pp->pool);
   result.ok = false;
   assert(result.errmsg[0]); // make sure there is an errmsg
