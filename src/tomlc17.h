@@ -96,8 +96,10 @@ TOML_EXTERN toml_result_t toml_parse(const char *src, int len);
 /**
  * Parse a toml file. Returns a toml_result which must be freed
  * using toml_free() eventually.
+ *
+ * IMPORTANT: you are still responsible to fclose(fp).
  */
-TOML_EXTERN toml_result_t toml_parse_file(FILE *file);
+TOML_EXTERN toml_result_t toml_parse_file(FILE *fp);
 
 /**
  * Parse a toml file. Returns a toml_result which must be freed
