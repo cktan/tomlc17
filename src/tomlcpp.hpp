@@ -12,6 +12,7 @@
 
 namespace toml {
 
+
 class Datum : public toml_datum_t {
 public:
   using datetime = std::chrono::sys_time<std::chrono::microseconds>;
@@ -113,11 +114,11 @@ public:
   // Retrieve an array of strings from this datum.
   std::optional<std::vector<std::string_view>> as_strvec() const {
     try {
-      auto vec = *as_vector();
+      auto vec = as_vector().value();
       std::vector<std::string_view> ret;
       ret.resize(vec.size());
       for (size_t i = 0; i < vec.size(); i++) {
-        ret[i] = *vec[i].as_str();
+        ret[i] = vec[i].as_str().value();
       }
       return ret;
     } catch (const std::bad_optional_access &ex) {
@@ -128,7 +129,7 @@ public:
   // Retrieve an array of ints from this datum
   std::optional<std::vector<int64_t>> as_intvec() const {
     try {
-      auto vec = *as_vector();
+      auto vec = as_vector().value();
       std::vector<int64_t> ret;
       ret.resize(vec.size());
       for (size_t i = 0; i < vec.size(); i++) {
@@ -175,5 +176,56 @@ public:
   }
 
 }; // class Datum
+
+class Result : private toml_result_t {
+public:
+  Result(const toml_result_t& result) : toml_result_t(result) {}
+  ~Result() noexcept { toml_free(*this); }
+
+  // Disallow copying
+  Result(const Result&) = delete;
+  Result& operator=(const Result&) = delete;
+  
+  // Allow moving
+  Result(Result&& other) noexcept : toml_result_t() {
+    swap(*this, other);
+  }
+  Result& operator=(Result&& other) noexcept {
+    swap(*this, other);
+    return *this;
+  }
+
+  // Access methods
+  bool ok() const { return toml_result_t::ok; }
+  Datum toptab() const { return toml_result_t::toptab; }
+  const char* errmsg() const { return toml_result_t::errmsg; }
+
+  // Shortcuts
+  std::optional<Datum> get(std::initializer_list<std::string_view> keys) const {
+    return toptab().get(keys);
+  }
+  std::optional<Datum> seek(const char *multipart_key) const {
+    return toptab().seek(multipart_key);
+  }
+
+private:
+  friend void swap(Result& a, Result& b) noexcept {
+    std::swap(static_cast<toml_result_t&>(a), static_cast<toml_result_t&>(b));
+  }
+};
+
+static inline Result parse_file(FILE* fp) {
+  return Result{toml_parse_file(fp)};
+}
+
+static inline Result parse_file_ex(const char* fname) {
+  return Result{toml_parse_file_ex(fname)};
+}
+
+static inline Result parse(const std::string& s) {
+  return Result{toml_parse(s.data(), s.size())};
+}
+
+
 
 }; // namespace toml

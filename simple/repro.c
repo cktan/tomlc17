@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 const char *PATH = "/tmp/t.toml";
 
 static void setup() {
@@ -22,8 +21,7 @@ static void setup() {
       "\n"
       "[[clipboards.Default.mime_type_groups]]\n"
       "group = [ \"TEXT\", \"STRING\", \"UTF8_STRING\", \"text/plain\" ]\n"
-    "xxxx xx xx\n"
-    ;
+      "xxxx xx xx\n";
   const char *text =
       "[default]\n"
       "\n"
@@ -31,8 +29,7 @@ static void setup() {
       "seats = [ \"$XDG_SEAT\" ] \n"
       "[[clipboards.Default.mime_type_groups]]\n"
       "group = [ \"TEXT\", \"STRING\", \"UTF8_STRING\", \"text/plain\" ]\n"
-    "xxxx xx xx\n"
-    ;
+      "xxxx xx xx\n";
 
   FILE *fp = fopen(PATH, "w");
   fprintf(fp, "%s", text);
