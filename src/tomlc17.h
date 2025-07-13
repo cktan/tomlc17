@@ -64,13 +64,13 @@ struct toml_datum_t {
     } ts;
     struct {              // array
       int32_t size;       // count elem
-      toml_datum_t *elem; // elem[] 
+      toml_datum_t *elem; // elem[]
     } arr;
     struct {               // table
       int32_t size;        // count key
-      const char **key;    // key[] 
-      int *len;            // len[] 
-      toml_datum_t *value; // value[] 
+      const char **key;    // key[]
+      int *len;            // len[]
+      toml_datum_t *value; // value[]
     } tab;
   } u;
 };

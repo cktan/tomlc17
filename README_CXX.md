@@ -1,6 +1,6 @@
 # C++20 Accessors in tomlc17
 
-Wrapper class and routines are provided in the `toml` namespace that provides:
+The library includes C++ class and routines in the `toml` namespace. These constructs provide:
 
 - **Safe resource management** - Result class respects RAII rules.
 - **Direct subtable access** – Retrieves values from nested subtables directly.

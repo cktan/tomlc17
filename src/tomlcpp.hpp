@@ -12,7 +12,6 @@
 
 namespace toml {
 
-
 class Datum : public toml_datum_t {
 public:
   using datetime = std::chrono::sys_time<std::chrono::microseconds>;
@@ -179,18 +178,16 @@ public:
 
 class Result : private toml_result_t {
 public:
-  Result(const toml_result_t& result) : toml_result_t(result) {}
+  Result(const toml_result_t &result) : toml_result_t(result) {}
   ~Result() noexcept { toml_free(*this); }
 
   // Disallow copying
-  Result(const Result&) = delete;
-  Result& operator=(const Result&) = delete;
-  
+  Result(const Result &) = delete;
+  Result &operator=(const Result &) = delete;
+
   // Allow moving
-  Result(Result&& other) noexcept : toml_result_t() {
-    swap(*this, other);
-  }
-  Result& operator=(Result&& other) noexcept {
+  Result(Result &&other) noexcept : toml_result_t() { swap(*this, other); }
+  Result &operator=(Result &&other) noexcept {
     swap(*this, other);
     return *this;
   }
@@ -198,7 +195,7 @@ public:
   // Access methods
   bool ok() const { return toml_result_t::ok; }
   Datum toptab() const { return toml_result_t::toptab; }
-  const char* errmsg() const { return toml_result_t::errmsg; }
+  const char *errmsg() const { return toml_result_t::errmsg; }
 
   // Shortcuts
   std::optional<Datum> get(std::initializer_list<std::string_view> keys) const {
@@ -209,23 +206,21 @@ public:
   }
 
 private:
-  friend void swap(Result& a, Result& b) noexcept {
-    std::swap(static_cast<toml_result_t&>(a), static_cast<toml_result_t&>(b));
+  friend void swap(Result &a, Result &b) noexcept {
+    std::swap(static_cast<toml_result_t &>(a), static_cast<toml_result_t &>(b));
   }
 };
 
-static inline Result parse_file(FILE* fp) {
+static inline Result parse_file(FILE *fp) {
   return Result{toml_parse_file(fp)};
 }
 
-static inline Result parse_file_ex(const char* fname) {
+static inline Result parse_file_ex(const char *fname) {
   return Result{toml_parse_file_ex(fname)};
 }
 
-static inline Result parse(const std::string& s) {
+static inline Result parse(const std::string &s) {
   return Result{toml_parse(s.data(), s.size())};
 }
-
-
 
 }; // namespace toml
