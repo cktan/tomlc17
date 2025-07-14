@@ -606,8 +606,11 @@ toml_datum_t toml_seek(toml_datum_t table, const char *multipart_key) {
     return DATUM_ZERO;
   }
 
+  char buf[128];
   int bufsz = strlen(multipart_key) + 1;
-  char buf[bufsz];
+  if (bufsz >= (int) sizeof(buf)) {
+    return DATUM_ZERO;
+  }
   memcpy(buf, multipart_key, bufsz);
 
   char *p = buf;

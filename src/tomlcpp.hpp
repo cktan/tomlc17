@@ -132,7 +132,22 @@ public:
       std::vector<int64_t> ret;
       ret.resize(vec.size());
       for (size_t i = 0; i < vec.size(); i++) {
-        ret[i] = *vec[i].as_int();
+        ret[i] = vec[i].as_int().value();
+      }
+      return ret;
+    } catch (const std::bad_optional_access &ex) {
+      return std::nullopt;
+    }
+  }
+
+  // Retrieve an array of doubles from this datum
+  std::optional<std::vector<double>> as_realvec() const {
+    try {
+      auto vec = as_vector().value();
+      std::vector<double> ret;
+      ret.resize(vec.size());
+      for (size_t i = 0; i < vec.size(); i++) {
+        ret[i] = vec[i].as_real().value();
       }
       return ret;
     } catch (const std::bad_optional_access &ex) {
@@ -212,15 +227,15 @@ private:
 };
 
 static inline Result parse_file(FILE *fp) {
-  return Result{toml_parse_file(fp)};
+  return toml_parse_file(fp);
 }
 
 static inline Result parse_file_ex(const char *fname) {
-  return Result{toml_parse_file_ex(fname)};
+  return toml_parse_file_ex(fname);
 }
 
 static inline Result parse(const std::string &s) {
-  return Result{toml_parse(s.data(), s.size())};
+  return toml_parse(s.data(), s.size());
 }
 
 }; // namespace toml

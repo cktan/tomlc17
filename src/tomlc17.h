@@ -123,7 +123,7 @@ TOML_EXTERN toml_datum_t toml_get(toml_datum_t table, const char *key);
  * found, or a TOML_UNKNOWN otherwise.
  *
  * Note: the multipart-key is separated by DOT, and must not have any escape
- * chars.
+ * chars. The maximum length of the multipart_key must not exceed 127 bytes.
  */
 TOML_EXTERN toml_datum_t toml_seek(toml_datum_t table,
                                    const char *multipart_key);
