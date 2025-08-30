@@ -226,9 +226,7 @@ private:
   }
 };
 
-static inline Result parse_file(FILE *fp) {
-  return toml_parse_file(fp);
-}
+static inline Result parse_file(FILE *fp) { return toml_parse_file(fp); }
 
 static inline Result parse_file_ex(const char *fname) {
   return toml_parse_file_ex(fname);
