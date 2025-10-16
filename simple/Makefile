@@ -9,8 +9,12 @@ endif
 
 CXXFLAGS = $(subst -std=c17,-std=c++20,$(CFLAGS))
 
-# Check if CXX is available
+# Test if C++ is available
 HAVE_CXX := $(shell command -v $(CXX) 2> /dev/null)
+
+# Test for C++20 support
+CXX20_SUPPORT := $(shell echo "int main(){}" | $(CXX) -std=c++20 -x c++ -c - -o /dev/null 2>/dev/null && echo yes || echo no)
+
 
 
 all: $(EXEC)
@@ -25,6 +29,8 @@ repro: repro.c ../src/libtomlc17.a
 simplecpp: simplecpp.cpp ../src/libtomlc17.a
 ifndef HAVE_CXX
 	@echo "INFO: skipping $@ because no $(CXX) compiler found"
+else ifeq ($(CXX20_SUPPORT),no)
+	@echo "INFO: skipping $@ because $(CXX) does not support C++20"
 else
 	$(CXX) $(CXXFLAGS) -o $@ $@.cpp -L ../src -l tomlc17
 endif

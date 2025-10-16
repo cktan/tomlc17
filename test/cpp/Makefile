@@ -9,10 +9,10 @@ endif
 
 CXXFLAGS = $(subst -std=c17,-std=c++20,$(CFLAGS))
 
-# Check if CXX is available
-HAVE_CXX := $(shell command -v $(CXX) 2> /dev/null)
+# Test for C++20 support
+CXX20_SUPPORT := $(shell echo "int main(){}" | $(CXX) -std=c++20 -x c++ -c - -o /dev/null 2>/dev/null && echo yes || echo no)
 
-ifdef HAVE_CXX
+ifeq ($(CXX20_SUPPORT),yes)
 
 all: $(EXEC)
 
@@ -29,10 +29,10 @@ test: all
 else
 
 all:
-	@echo "Skipped because C++ not available"
+	@echo "Skipped because C++20 not available"
 
 test: 
-	@echo "Skipped because C++ not available"
+	@echo "Skipped because C++20 not available"
 
 endif
 
