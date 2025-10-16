@@ -36,9 +36,9 @@ install: all
 	install -d ${prefix}/include
 	install -d ${prefix}/lib
 	install -d ${prefix}/lib/pkgconfig
-	install -m 0644 -t ${prefix}/include src/tomlc17.h
-	install -m 0644 -t ${prefix}/include src/tomlcpp.hpp
-	install -m 0644 -t ${prefix}/lib src/libtomlc17.a
+	install -m 0644 src/tomlc17.h ${prefix}/include/
+	install -m 0644 src/tomlcpp.hpp ${prefix}/include/
+	install -m 0644 src/libtomlc17.a ${prefix}/lib/
 	@echo "$$PCFILE" >> ${prefix}/lib/pkgconfig/tomlc17.pc
 
 test: $(TESTDIRS)
