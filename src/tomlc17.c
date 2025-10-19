@@ -25,7 +25,9 @@ static toml_option_t toml_option = {0, realloc, free};
   if (x)                                                                       \
     return -1;                                                                 \
   else                                                                         \
-    (void)0;
+    (void)0
+
+
 /*
  *  Error buffer
  */
