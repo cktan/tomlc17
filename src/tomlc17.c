@@ -121,6 +121,11 @@ static int ucs_to_utf8(uint32_t code, char buf[4]);
 #define FLAG_STDEXPR 2
 #define FLAG_EXPLICIT 4
 
+// Maximum levels of brackets and braces to prevent
+// stack overflow during recursive descent of the parser.
+#define BRACKET_LEVEL_MAX 30
+#define BRACE_LEVEL_MAX 30
+
 static inline size_t align8(size_t x) { return (((x) + 7) & ~7); }
 
 enum toktyp_t {
@@ -187,6 +192,9 @@ struct scanner_t {
   int lineno;       // line number of current char
   char *errmsg;     // point to errbuf if there was an error
   ebuf_t ebuf;
+
+  int bracket_level;  // count depth of [ ] 
+  int brace_level;  // count depth of { }
 };
 static void scan_init(scanner_t *sp, const char *src, int len, char *errbuf,
                       int errbufsz);
@@ -2565,7 +2573,29 @@ again:
 }
 
 static int scan_key(scanner_t *sp, token_t *tok) {
-  return scan_next(sp, true, tok);
+  DO(scan_next(sp, true, tok));
+  switch (tok->toktyp) {
+  case TOK_LBRACK:
+    sp->bracket_level++;
+    if (sp->bracket_level > BRACKET_LEVEL_MAX) {
+      return RETERROR(sp->ebuf, sp->lineno, "stack overflow");
+    }
+    break;
+  case TOK_RBRACK:
+    sp->bracket_level--;
+    break;
+  case TOK_LBRACE:
+    sp->brace_level++;
+    if (sp->brace_level > BRACE_LEVEL_MAX) {
+      return RETERROR(sp->ebuf, sp->lineno, "stack overflow");
+    }
+    break;
+  case TOK_RBRACE:
+    sp->brace_level--;
+    break;
+  default: break;
+  }
+  return 0;
 }
 
 static int scan_value(scanner_t *sp, token_t *tok) {
