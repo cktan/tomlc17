@@ -27,7 +27,6 @@ static toml_option_t toml_option = {0, realloc, free};
   else                                                                         \
     (void)0
 
-
 /*
  *  Error buffer
  */
@@ -193,8 +192,8 @@ struct scanner_t {
   char *errmsg;     // point to errbuf if there was an error
   ebuf_t ebuf;
 
-  int bracket_level;  // count depth of [ ] 
-  int brace_level;  // count depth of { }
+  int bracket_level; // count depth of [ ]
+  int brace_level;   // count depth of { }
 };
 static void scan_init(scanner_t *sp, const char *src, int len, char *errbuf,
                       int errbufsz);
@@ -2572,7 +2571,7 @@ again:
   return 0;
 }
 
-static int check_overflow(scanner_t* sp, token_t* tok) {
+static int check_overflow(scanner_t *sp, token_t *tok) {
   switch (tok->toktyp) {
   case TOK_LBRACK:
     sp->bracket_level++;
@@ -2592,7 +2591,8 @@ static int check_overflow(scanner_t* sp, token_t* tok) {
   case TOK_RBRACE:
     sp->brace_level--;
     break;
-  default: break;
+  default:
+    break;
   }
   return 0;
 }
