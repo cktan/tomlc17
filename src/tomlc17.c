@@ -2572,12 +2572,7 @@ again:
   return 0;
 }
 
-static int scan_key(scanner_t *sp, token_t *tok) {
-  return scan_next(sp, true, tok);
-}
-
-static int scan_value(scanner_t *sp, token_t *tok) {
-  DO(scan_next(sp, false, tok));
+static int check_overflow(scanner_t* sp, token_t* tok) {
   switch (tok->toktyp) {
   case TOK_LBRACK:
     sp->bracket_level++;
@@ -2599,6 +2594,18 @@ static int scan_value(scanner_t *sp, token_t *tok) {
     break;
   default: break;
   }
+  return 0;
+}
+
+static int scan_key(scanner_t *sp, token_t *tok) {
+  DO(scan_next(sp, true, tok));
+  DO(check_overflow(sp, tok));
+  return 0;
+}
+
+static int scan_value(scanner_t *sp, token_t *tok) {
+  DO(scan_next(sp, false, tok));
+  DO(check_overflow(sp, tok));
   return 0;
 }
 
