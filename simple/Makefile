@@ -1,5 +1,5 @@
 CFLAGS = -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
-EXEC = simple simplecpp repro
+EXEC = simple simplecpp 
 
 ifdef DEBUG
     CFLAGS += -O0 -g

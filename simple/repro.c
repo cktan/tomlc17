@@ -6,22 +6,6 @@
 const char *PATH = "/tmp/t.toml";
 
 static void setup() {
-  const char *text_orig =
-      "# Configuration file\n"
-      "\n"
-      "[default]\n"
-      "\n"
-      "[wayland_displays.\"$WAYLAND_DISPLAY\"]\n"
-      "seats = [ \"$XDG_SEAT\" ] \n"
-      "\n"
-      "[wayland_displays.\"$WAYLAND_DISPLAY\".\"$XDG_SEAT\"]\n"
-      "\n"
-      "[clipboards.Default]\n"
-      "allowed_mime_types = [ \"text/*\", \"image/*\" ]\n"
-      "\n"
-      "[[clipboards.Default.mime_type_groups]]\n"
-      "group = [ \"TEXT\", \"STRING\", \"UTF8_STRING\", \"text/plain\" ]\n"
-      "xxxx xx xx\n";
   const char *text =
       "[default]\n"
       "\n"
@@ -31,6 +15,7 @@ static void setup() {
       "group = [ \"TEXT\", \"STRING\", \"UTF8_STRING\", \"text/plain\" ]\n"
       "xxxx xx xx\n";
 
+  (void)text;
   FILE *fp = fopen(PATH, "w");
   fprintf(fp, "%s", text);
   fclose(fp);
@@ -49,8 +34,9 @@ static void run() {
   toml_datum_t wayland_displays =
       toml_seek(root.toptab, "main.wayland_displays");
   toml_datum_t clipboards = toml_seek(root.toptab, "main.clipboards");
+  (void)
 
-  toml_free(root);
+      toml_free(root);
 }
 
 int main() {
