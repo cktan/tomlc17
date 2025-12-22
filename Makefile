@@ -40,7 +40,7 @@ install: all
 	install -m 0644 src/tomlc17.h $(DESTDIR)${prefix}/include/
 	install -m 0644 src/tomlcpp.hpp $(DESTDIR)${prefix}/include/
 	install -m 0644 src/libtomlc17.a $(DESTDIR)${prefix}/lib/
-	@echo "$$PCFILE" >> $(DESTDIR)${prefix}/lib/pkgconfig/tomlc17.pc
+	@echo "$$PCFILE" >> $(DESTDIR)${prefix}/lib/pkgconfig/libtomlc17.pc
 
 test: $(TESTDIRS)
 
