@@ -17,7 +17,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: actions/setup-go@v4
     - name: install toml-test
-      run: go install github.com/toml-lang/toml-test/cmd/toml-test@latest
+      run: (cd ./test/stdtest && bash SETUP.sh)
     - name: make clean all
       run: make clean all
     - name: make test
