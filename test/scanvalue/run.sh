@@ -6,7 +6,7 @@ echo =========================
 echo == scanvalue test
 echo =========================
 
-for fname in {1..100}; do
+for fname in {1..100} e{1..100}; do
     IN="in/$fname"
     if [ -f $IN ]; then
         echo test $fname

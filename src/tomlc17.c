@@ -2008,6 +2008,10 @@ static int read_time(const char *p, int *hour, int *minute, int *second,
     return p - pp;
   }
   p++; // skip the period
+  if (!isdigit(*p)) {
+    // trailing period
+    return 0;
+  }
   int micro_factor = 100000;
   while (isdigit(*p) && micro_factor) {
     *usec += (*p - '0') * micro_factor;
@@ -2132,7 +2136,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   }
   toktyp = TOK_DATETIMETZ;
   p += n;
-  if (!(0 <= tzminute && tzminute <= 60)) {
+  if (!(0 <= tzminute && tzminute < 60)) {
     return RETERROR(sp->ebuf, lineno, "invalid timezone");
   }
   tz = (tzhour * 60 + tzminute) * (tzsign == '-' ? -1 : 1);
