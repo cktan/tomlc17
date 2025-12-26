@@ -1586,6 +1586,20 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       *dst++ = '\e';
       p += 2;
       continue;
+    case 'x': {
+      char buf[3];
+      memcpy(buf, p + 2, 2);
+      buf[2] = 0;
+      int32_t ucs = strtol(buf, 0, 16);
+      int n = ucs_to_utf8(ucs, dst);
+      if (n < 0) {
+        return RETERROR(pp->ebuf, tok.lineno, "error converting UCS %s to UTF8",
+                        buf);
+      }
+      dst += n;
+      p += 4;
+      continue;
+    }
     case 'u':
     case 'U': {
       char buf[9];
@@ -1833,17 +1847,20 @@ static int scan_string(scanner_t *sp, token_t *tok) {
       // skip \b, \t, \n, \f, \r, \e, \", \\  .
       continue;
     }
-    if (ch == 'u' || ch == 'U') {
-      int top = (ch == 'u' ? 4 : 8);
-      for (int i = 0; i < top; i++) {
-        if (!is_hex_char(S_GET())) {
-          return RETERROR(sp->ebuf, sp->lineno,
-                          "expect %d hex digits after \\%c", top, ch);
-        }
-      }
-      continue;
+    int top = 0;
+    switch (ch) {
+    case 'x': top = 2; break;
+    case 'u': top = 4; break;
+    case 'U': top = 8; break;
+    default:
+          return RETERROR(sp->ebuf, sp->lineno, "bad escape char in string");
     }
-    return RETERROR(sp->ebuf, sp->lineno, "bad escape char in string");
+    for (int i = 0; i < top; i++) {
+      if (!is_hex_char(S_GET())) {
+	return RETERROR(sp->ebuf, sp->lineno,
+			"expect %d hex digits after \\%c", top, ch);
+      }
+    }
   }
   tok->str.len = sp->cur - tok->str.ptr;
 
