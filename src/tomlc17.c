@@ -1158,16 +1158,16 @@ static int parse_inline_table(parser_t *pp, token_t tok,
       return RETERROR(pp->ebuf, tok.lineno, "unexpected comma");
     }
 
-    // Not a comma, but need a comma: error!
-    if (need_comma) {
-      return RETERROR(pp->ebuf, tok.lineno, "missing comma");
-    }
-
     // Newline not allowed in inline table.
     // newline is allowed in v1.1
     if (tok.toktyp == TOK_ENDL) {
       // return RETERROR(pp->ebuf, tok.lineno, "unexpected newline");
       continue;
+    }
+
+    // Not a comma, but need a comma: error!
+    if (need_comma) {
+      return RETERROR(pp->ebuf, tok.lineno, "missing comma");
     }
 
     // Get the keyparts
