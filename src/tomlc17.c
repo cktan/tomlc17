@@ -1780,8 +1780,21 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
       // skip \", \\, \b, \f, \n, \r, \t
       continue;
     }
-    if (ch == 'u' || ch == 'U') {
-      int top = (ch == 'u' ? 4 : 8);
+    int top = 0;
+    switch (ch) {
+    case 'x':
+      top = 2;
+      break;
+    case 'u':
+      top = 4;
+      break;
+    case 'U':
+      top = 8;
+      break;
+    default:
+      break;
+    }
+    if (top) {
       for (int i = 0; i < top; i++) {
         if (!is_hex_char(S_GET())) {
           return RETERROR(sp->ebuf, sp->lineno,
@@ -1849,16 +1862,22 @@ static int scan_string(scanner_t *sp, token_t *tok) {
     }
     int top = 0;
     switch (ch) {
-    case 'x': top = 2; break;
-    case 'u': top = 4; break;
-    case 'U': top = 8; break;
+    case 'x':
+      top = 2;
+      break;
+    case 'u':
+      top = 4;
+      break;
+    case 'U':
+      top = 8;
+      break;
     default:
-          return RETERROR(sp->ebuf, sp->lineno, "bad escape char in string");
+      return RETERROR(sp->ebuf, sp->lineno, "bad escape char in string");
     }
     for (int i = 0; i < top; i++) {
       if (!is_hex_char(S_GET())) {
-	return RETERROR(sp->ebuf, sp->lineno,
-			"expect %d hex digits after \\%c", top, ch);
+        return RETERROR(sp->ebuf, sp->lineno, "expect %d hex digits after \\%c",
+                        top, ch);
       }
     }
   }
