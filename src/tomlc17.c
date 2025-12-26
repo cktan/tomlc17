@@ -1139,8 +1139,12 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     // Got an RBRACE: done!
     if (tok.toktyp == TOK_RBRACE) {
       if (was_comma) {
+	/*
         return RETERROR(pp->ebuf, tok.lineno,
                         "extra comma before closing brace");
+	*/
+	// extra comma before RBRACE is allowed for v1.1
+	(void) 0;
       }
       break;
     }
@@ -1160,8 +1164,10 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     }
 
     // Newline not allowed in inline table.
+    // newline is allowed in v1.1 
     if (tok.toktyp == TOK_ENDL) {
-      return RETERROR(pp->ebuf, tok.lineno, "unexpected newline");
+      // return RETERROR(pp->ebuf, tok.lineno, "unexpected newline");
+      continue;
     }
 
     // Get the keyparts
@@ -1991,19 +1997,32 @@ static int read_time(const char *p, int *hour, int *minute, int *second,
   const char *pp = p;
   int n;
   *hour = *minute = *second = *usec = 0;
+  // scan hours
   n = read_int(p, hour);
   if (n != 2 || p[2] != ':') {
     return 0;
   }
-  n = read_int(p += 3, minute);
-  if (n != 2 || p[2] != ':') {
+  p += 3;
+
+  // scan minutes
+  n = read_int(p, minute);
+  if (n != 2) {
     return 0;
   }
-  n = read_int(p += 3, second);
+  if (p[2] != ':') {
+    // seconds are optional in v1.1
+    p += 2;
+    return p - pp;
+  }
+  p += 3;
+
+  // scan seconds
+  n = read_int(p, second);
   if (n != 2) {
     return 0;
   }
   p += 2;
+  
   if (*p != '.') {
     return p - pp;
   }
