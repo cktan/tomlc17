@@ -19,6 +19,30 @@ static void print_string(const char *s, int len) {
       continue;
     }
     switch (ch) {
+    case '\b':
+      putchar('\\');
+      putchar('b');
+      break; // Escape backspace
+    case '\t':
+      putchar('\\');
+      putchar('t');
+      break; // Escape tab
+    case '\n':
+      putchar('\\');
+      putchar('n');
+      break; // Escape newline
+    case '\f':
+      putchar('\\');
+      putchar('f');
+      break; // Escape formfeed
+    case '\r':
+      putchar('\\');
+      putchar('r');
+      break; // Escape carriage return
+    case '\e':
+      putchar('\\');
+      putchar('e');
+      break; // Escape escape
     case '"':
       putchar('\\');
       putchar('"');
@@ -27,26 +51,6 @@ static void print_string(const char *s, int len) {
       putchar('\\');
       putchar('\\');
       break; // Escape backslash
-    case '\b':
-      putchar('\\');
-      putchar('b');
-      break; // Escape backspace
-    case '\f':
-      putchar('\\');
-      putchar('f');
-      break; // Escape formfeed
-    case '\n':
-      putchar('\\');
-      putchar('n');
-      break; // Escape newline
-    case '\r':
-      putchar('\\');
-      putchar('r');
-      break; // Escape carriage return
-    case '\t':
-      putchar('\\');
-      putchar('t');
-      break; // Escape tab
     default:
       if (0 <= ch && ch < ' ') {
         printf("\\u%04x", ch);

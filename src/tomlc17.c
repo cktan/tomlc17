@@ -1139,12 +1139,12 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     // Got an RBRACE: done!
     if (tok.toktyp == TOK_RBRACE) {
       if (was_comma) {
-	/*
+        /*
         return RETERROR(pp->ebuf, tok.lineno,
                         "extra comma before closing brace");
-	*/
-	// extra comma before RBRACE is allowed for v1.1
-	(void) 0;
+        */
+        // extra comma before RBRACE is allowed for v1.1
+        (void)0;
       }
       break;
     }
@@ -1164,7 +1164,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     }
 
     // Newline not allowed in inline table.
-    // newline is allowed in v1.1 
+    // newline is allowed in v1.1
     if (tok.toktyp == TOK_ENDL) {
       // return RETERROR(pp->ebuf, tok.lineno, "unexpected newline");
       continue;
@@ -1566,20 +1566,24 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       *dst++ = '\b';
       p += 2;
       continue;
-    case 'f':
-      *dst++ = '\f';
-      p += 2;
-      continue;
     case 't':
       *dst++ = '\t';
+      p += 2;
+      continue;
+    case 'n':
+      *dst++ = '\n';
+      p += 2;
+      continue;
+    case 'f':
+      *dst++ = '\f';
       p += 2;
       continue;
     case 'r':
       *dst++ = '\r';
       p += 2;
       continue;
-    case 'n':
-      *dst++ = '\n';
+    case 'e':
+      *dst++ = '\e';
       p += 2;
       continue;
     case 'u':
@@ -1758,7 +1762,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
     }
     // ch is backslash; handle escape char
     ch = S_GET();
-    if (ch && strchr("\"\\bfnrt", ch)) {
+    if (ch && strchr("btnfre\"\\", ch)) {
       // skip \", \\, \b, \f, \n, \r, \t
       continue;
     }
@@ -1825,8 +1829,8 @@ static int scan_string(scanner_t *sp, token_t *tok) {
     }
     // ch is backslash; handle escape char
     ch = S_GET();
-    if (ch && strchr("\"\\bfnrt", ch)) {
-      // skip \", \\, \b, \f, \n, \r, \t
+    if (ch && strchr("btnfre\"\\", ch)) {
+      // skip \b, \t, \n, \f, \r, \e, \", \\  .
       continue;
     }
     if (ch == 'u' || ch == 'U') {
@@ -2022,7 +2026,7 @@ static int read_time(const char *p, int *hour, int *minute, int *second,
     return 0;
   }
   p += 2;
-  
+
   if (*p != '.') {
     return p - pp;
   }

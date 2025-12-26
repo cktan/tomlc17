@@ -1,0 +1,6 @@
+EQUAL 0 1 =
+STRING 3 17 \t tab tab tab \t
+ENDL 21 1 _
+EQUAL 22 1 =
+STRING 25 25 \e There is no escape! \e
+ENDL 51 1 _
