@@ -110,7 +110,7 @@ The following command invokes the tests:
 make test
 ```
 
-As of May 7, 2025, all tests passed for V1.0:
+As of May 7, 2025, all tests passed for TOML v1.0:
 
 ```
 toml-test v0001-01-01 [/home/cktan/p/tomlc17/test/stdtest/driver]: using embedded tests
@@ -118,7 +118,7 @@ toml-test v0001-01-01 [/home/cktan/p/tomlc17/test/stdtest/driver]: using embedde
 invalid tests: 371 passed,  0 failed
 ```
 
-As of Dec 25, 2025, all tests passed for V1.1:
+As of Dec 25, 2025, all tests passed for TOML v1.1:
 
 ```
 toml-test v0001-01-01 [/home/cktan/p/tomlc17/test/stdtest/driver] [no encoder]
