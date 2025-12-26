@@ -1,11 +1,11 @@
 # tomlc17
 
-TOML v1.0 in c17.
+TOML v1.1 in c17.
 
 * Compatible with C99.
 * Compatible with C++.
 * Implements [C++20 Accessors](README_CXX.md).
-* Implements [TOML v1.1.0](https://toml.io/en/v1.1.0).
+* Implements [TOML v1.1](https://toml.io/en/v1.1.0).
 * Passes the [standard test suites](https://github.com/toml-lang/toml-test/).
 
 ## Usage
@@ -110,7 +110,7 @@ The following command invokes the tests:
 make test
 ```
 
-As of today (05/07/2025), all tests passed:
+As of May 7, 2025, all tests passed for V1.0:
 
 ```
 toml-test v0001-01-01 [/home/cktan/p/tomlc17/test/stdtest/driver]: using embedded tests
@@ -118,6 +118,14 @@ toml-test v0001-01-01 [/home/cktan/p/tomlc17/test/stdtest/driver]: using embedde
 invalid tests: 371 passed,  0 failed
 ```
 
+As of Dec 25, 2025, all tests passed for V1.1:
+
+```
+toml-test v0001-01-01 [/home/cktan/p/tomlc17/test/stdtest/driver] [no encoder]
+  valid tests: 214 passed,  0 failed
+encoder tests: no encoder command given
+invalid tests: 466 passed,  0 failed
+```
 
 ## Installing
 
