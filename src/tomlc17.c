@@ -213,6 +213,8 @@ struct parser_t {
   ebuf_t ebuf;
 };
 
+// Put key into tab dictionary. Return a place to
+// the datum for the key on success, or NULL otherwise.
 static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
                                  const char **reason) {
   assert(tab->type == TOML_TABLE);
@@ -228,7 +230,6 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
     char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
     if (!pkey) {
       *reason = "out of memory";
-      FREE(pkey);
       return NULL;
     }
     tab->u.tab.key = (const char **)pkey;
@@ -238,7 +239,6 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
     int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(N + 1));
     if (!plen) {
       *reason = "out of memory";
-      FREE(plen);
       return NULL;
     }
     tab->u.tab.len = plen;
@@ -249,7 +249,6 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
         REALLOC(tab->u.tab.value, sizeof(*value) * align8(N + 1));
     if (!value) {
       *reason = "out of memory";
-      FREE(value);
       return NULL;
     }
     tab->u.tab.value = value;
@@ -276,7 +275,7 @@ static int tab_find(toml_datum_t *tab, span_t key) {
 }
 
 // Add a new key in tab. Return 0 on success, -1 otherwise.
-// On error, reason will point to an error message.
+// On error, *reason will point to an error message.
 static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
                    const char **reason) {
   assert(tab->type == TOML_TABLE);
@@ -293,7 +292,7 @@ static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
 }
 
 // Add a new element into an array. Return 0 on success, -1 otherwise.
-// On error, reason will point to an error message.
+// On error, *reason will point to an error message.
 static toml_datum_t *arr_emplace(toml_datum_t *arr, const char **reason) {
   assert(arr->type == TOML_ARRAY);
   int n = arr->u.arr.size;
@@ -351,6 +350,8 @@ static void datum_free(toml_datum_t *datum) {
   *datum = DATUM_ZERO;
 }
 
+// Make a deep copy of src to dst.
+// Return 0 on success, -1 otherwise.
 static int datum_copy(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
                       const char **reason) {
   *dst = mkdatum(src.type);
@@ -399,6 +400,7 @@ bail:
   return -1;
 }
 
+// Check if datum is an array of tables.
 static inline bool is_array_of_tables(toml_datum_t datum) {
   bool ret = (datum.type == TOML_ARRAY);
   for (int i = 0; ret && i < datum.u.arr.size; i++) {
@@ -407,6 +409,7 @@ static inline bool is_array_of_tables(toml_datum_t datum) {
   return ret;
 }
 
+// Merge src into dst. Return 0 on success, -1 otherwise.
 static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
                        const char **reason) {
   if (dst->type != src.type) {
@@ -453,6 +456,7 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
   return datum_copy(dst, src, pool, reason);
 }
 
+// Compare the content of a and b.
 static bool datum_equiv(toml_datum_t a, toml_datum_t b) {
   if (a.type != b.type) {
     return false;
@@ -560,9 +564,12 @@ toml_result_t toml_merge(const toml_result_t *r1, const toml_result_t *r2) {
     }
   }
 
+  // Make a copy of r1
   if (datum_copy(&ret.toptab, r1->toptab, pool, &reason)) {
     goto bail;
   }
+
+  // Merge r2 into the result
   if (datum_merge(&ret.toptab, r2->toptab, pool, &reason)) {
     goto bail;
   }
@@ -622,6 +629,7 @@ toml_datum_t toml_seek(toml_datum_t table, const char *multipart_key) {
   }
   memcpy(buf, multipart_key, bufsz);
 
+  // go through the multipart name part by part.
   char *p = buf;
   char *q = strchr(p, '.');
   toml_datum_t datum = table;
