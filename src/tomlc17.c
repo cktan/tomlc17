@@ -1626,7 +1626,8 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       }
       dst += n;
       p += 2 + sz;
-    } break;
+      continue;
+    }
 
     case ' ':
     case '\t':
@@ -1647,7 +1648,7 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       continue;
     default:
       *dst++ = *p++;
-      break;
+      continue;
     }
   }
   *dst = 0;
@@ -1811,6 +1812,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
       }
       continue;
     }
+    // handle line-ending backslash
     if (ch == ' ' || ch == '\t') {
       // Although the spec does not allow for whitespace following a
       // line-ending backslash, some standard tests expect it.
@@ -1819,7 +1821,8 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
         ch = S_GET();
       }
       if (ch != '\n') {
-        // Got a backslash followed by whitespace
+        // Got a backslash followed by whitespace, followed by some char
+	// before newline
         return RETERROR(sp->ebuf, sp->lineno, "bad escape char in string");
       }
       // fallthru
