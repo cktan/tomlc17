@@ -5,10 +5,10 @@ prefix ?= /usr/local
 override prefix := $(prefix:%/=%)
 DIRS := src simple test
 
-BUILDDIRS = $(DIRS:%=build-%)
-CLEANDIRS = $(DIRS:%=clean-%)
-FORMATDIRS = $(DIRS:%=format-%)
-TESTDIRS = $(DIRS:%=test-%)
+BUILDDIRS := $(DIRS:%=build-%)
+CLEANDIRS := $(DIRS:%=clean-%)
+FORMATDIRS := $(DIRS:%=format-%)
+TESTDIRS := $(DIRS:%=test-%)
 
 ###################################
 
