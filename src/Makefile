@@ -1,10 +1,10 @@
-HFILES = tomlc17.h
-CFILES = tomlc17.c
-OBJ = $(CFILES:.c=.o)
+HFILES := tomlc17.h
+CFILES := tomlc17.c
+OBJ := $(CFILES:.c=.o)
 
-CFLAGS = -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
-LIB_VERSION = 1.0
-LIB = libtomlc17.a
+CFLAGS := -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
+LIB_VERSION := 1.0
+LIB := libtomlc17.a
 LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
 EXEC = 
 
