@@ -2012,7 +2012,7 @@ static int read_int(const char *p, int *ret) {
   const char *pp = p;
   int val = 0;
   for (; isdigit(*p); p++) {
-    val = val * 10 + (*p - '0');
+    val = val * 10u + (*p - '0');
     if (val < 0) {
       return 0; // overflowed
     }
