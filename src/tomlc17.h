@@ -1,4 +1,4 @@
-/* Copyright (c) 2024-2025, CK Tan.
+/* Copyright (c) 2024-2026, CK Tan.
  * https://github.com/cktan/tomlc17/blob/main/LICENSE
  */
 #ifndef TOMLC17_H
