@@ -1662,7 +1662,8 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       p++;                     // skip the escape char
       p += strspn(p, " \t\r"); // skip whitespaces
       if (*p != '\n') {
-        return RETERROR(pp->ebuf, tok.lineno, "internal error");
+        return RETERROR(pp->ebuf, tok.lineno,
+                        "unexpected char after line-ending backslash");
       }
       // fallthru
     case '\n':
