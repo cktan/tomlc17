@@ -27,6 +27,17 @@ static toml_option_t toml_option = {0, realloc, free};
   else                                                                         \
     (void)0
 
+// Copy string src to dst where dst is limited to dstlen in size that includes
+// NUL. Return 0 on success, -1 otherwise (because src[] is longer than dst[]).
+static int copystring(char *dst, int dstsz, const char *src) {
+  int srcsz = strlen(src) + 1;
+  if (srcsz > dstsz) {
+    return -1;
+  }
+  memcpy(dst, src, srcsz);
+  return 0;
+}
+
 /*
  *  Error buffer
  */
@@ -202,6 +213,20 @@ static int scan_value(scanner_t *sp, token_t *tok);
 // restore scanner to state before tok was returned
 static scanner_state_t scan_mark(scanner_t *sp);
 static void scan_restore(scanner_t *sp, scanner_state_t state);
+
+// Copy up to dstsz - 1 chars from the current position of the scanner
+// to dst.
+static char *scan_copystr(scanner_t *sp, char *dst, int dstsz) {
+  assert(dstsz > 0);
+  int len = sp->endp - sp->cur;
+  if (len > dstsz - 1) {
+    len = dstsz - 1; // account for NUL
+  }
+  assert(len >= 0);
+  memcpy(dst, sp->cur, len);
+  dst[len] = 0;
+  return dst;
+}
 
 // Parser object
 typedef struct parser_t parser_t;
@@ -622,16 +647,15 @@ toml_datum_t toml_seek(toml_datum_t table, const char *multipart_key) {
     return DATUM_ZERO;
   }
 
-  char buf[128];
-  int bufsz = strlen(multipart_key) + 1;
-  if (bufsz >= (int)sizeof(buf)) {
+  // Make a mutable copy of the multipart_key for splitting
+  char buf[256];
+  if (copystring(buf, sizeof(buf), multipart_key)) {
     return DATUM_ZERO;
   }
-  memcpy(buf, multipart_key, bufsz);
 
-  // go through the multipart name part by part.
-  char *p = buf;
-  char *q = strchr(p, '.');
+  // Go through the multipart name part by part.
+  char *p = buf;            // start of current key
+  char *q = strchr(p, '.'); // end of current key
   toml_datum_t datum = table;
   while (q && datum.type == TOML_TABLE) {
     *q = 0;
@@ -778,7 +802,7 @@ toml_result_t toml_parse(const char *src, int len) {
   // Initialize parser
   pp->toptab = mkdatum(TOML_TABLE);
   pp->curtab = &pp->toptab;
-  pp->ebuf.ptr = result.errmsg;   // parse error will be printed into pp->ebuf
+  pp->ebuf.ptr = result.errmsg; // parse error will be printed into pp->ebuf
   pp->ebuf.len = sizeof(result.errmsg);
 
   // Alloc memory pool
@@ -1605,7 +1629,7 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
                         buf);
       }
       dst += n;
-      p += 4;
+      p += 2 + 2; // \xNN
       continue;
     }
     case 'u':
@@ -1625,7 +1649,7 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
                         buf);
       }
       dst += n;
-      p += 2 + sz;
+      p += 2 + sz; // \uNNNN or \UNNNNNNNN
       continue;
     }
 
@@ -1635,8 +1659,8 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       // line-ending backslash
       // --- allow for extra whitespace chars after backslash
       // --- skip until newline
-      p++;
-      p += strspn(p, " \t\r");
+      p++;                     // skip the escape char
+      p += strspn(p, " \t\r"); // skip whitespaces
       if (*p != '\n') {
         return RETERROR(pp->ebuf, tok.lineno, "internal error");
       }
@@ -1822,7 +1846,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
       }
       if (ch != '\n') {
         // Got a backslash followed by whitespace, followed by some char
-	// before newline
+        // before newline
         return RETERROR(sp->ebuf, sp->lineno, "bad escape char in string");
       }
       // fallthru
@@ -2095,11 +2119,11 @@ static int read_time(const char *p, int *hour, int *minute, int *second,
 // tzhours and tzminutes restricted to 2-char integers only.
 static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
   const char *pp = p;
-  
+
   // Default values
   *tzhour = *tzminute = 0;
   *tzsign = '+';
-  
+
   // Look for Zulu
   if (*p == 'Z' || *p == 'z') {
     return 1; // done! tz is +00:00.
@@ -2128,16 +2152,11 @@ static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
 static int scan_time(scanner_t *sp, token_t *tok) {
   int lineno = sp->lineno;
   char buffer[20];
-  int len = sp->endp - sp->cur;
-  if (len >= (int)sizeof(buffer)) {
-    len = sizeof(buffer) - 1;
-  }
-  memcpy(buffer, sp->cur, len);
-  buffer[len] = 0; // NUL
+  scan_copystr(sp, buffer, sizeof(buffer));
 
   char *p = buffer;
   int hour, minute, sec, usec;
-  len = read_time(p, &hour, &minute, &sec, &usec);
+  int len = read_time(p, &hour, &minute, &sec, &usec);
   if (len == 0) {
     return RETERROR(sp->ebuf, lineno, "invalid time");
   }
@@ -2164,12 +2183,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   int n;
   // make a copy of sp->cur into buffer to ensure NUL terminated string
   char buffer[80];
-  int len = sp->endp - sp->cur;
-  if (len >= (int)sizeof(buffer)) {
-    len = sizeof(buffer) - 1;
-  }
-  memcpy(buffer, sp->cur, len);
-  buffer[len] = 0; // NUL
+  scan_copystr(sp, buffer, sizeof(buffer));
 
   toktyp_t toktyp = TOK_FIN;
   int lineno = sp->lineno;
@@ -2207,7 +2221,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   toktyp = TOK_DATETIME;
   p += n;
 
-  // Read the (optional) timezone 
+  // Read the (optional) timezone
   char tzsign;
   int tzhour, tzminute;
   n = read_tzone(p, &tzsign, &tzhour, &tzminute);
@@ -2272,10 +2286,9 @@ done:
   return 0;
 }
 
-
 // Given a toml number (int and float) in buffer[]:
 //   1. squeeze out '_'
-//   2. check for syntax restrictions 
+//   2. check for syntax restrictions
 static int process_numstr(char *buffer, int base, const char **reason) {
   // squeeze out _
   char *q = strchr(buffer, '_');
@@ -2335,12 +2348,7 @@ static int process_numstr(char *buffer, int base, const char **reason) {
 
 static int scan_float(scanner_t *sp, token_t *tok) {
   char buffer[50]; // need to accomodate "9_007_199_254_740_991.0"
-  int len = sp->endp - sp->cur;
-  if (len >= (int)sizeof(buffer)) {
-    len = sizeof(buffer) - 1;
-  }
-  memcpy(buffer, sp->cur, len);
-  buffer[len] = 0; // NUL
+  scan_copystr(sp, buffer, sizeof(buffer));
 
   int lineno = sp->lineno;
   char *p = buffer;
@@ -2350,7 +2358,7 @@ static int scan_float(scanner_t *sp, token_t *tok) {
   } else {
     p += strspn(p, "_0123456789eE.+-");
   }
-  len = p - buffer;
+  int len = p - buffer;
   buffer[len] = 0;
 
   const char *reason;
@@ -2375,15 +2383,9 @@ static int scan_float(scanner_t *sp, token_t *tok) {
 static int scan_number(scanner_t *sp, token_t *tok) {
   const char *reason;
   char buffer[50]; // need to accomodate "9_007_199_254_740_991.0"
-  int len = sp->endp - sp->cur;
-  if (len >= (int)sizeof(buffer)) {
-    len = sizeof(buffer) - 1;
-  }
-  memcpy(buffer, sp->cur, len);
-  buffer[len] = 0; // NUL
+  scan_copystr(sp, buffer, sizeof(buffer));
 
   char *p = buffer;
-  char *q = buffer + len;
   int lineno = sp->lineno;
   // process %0x, %0o or %0b integers
   if (p[0] == '0') {
@@ -2406,7 +2408,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
     if (base) {
       p += 2;
       p += strspn(p, span);
-      len = p - buffer;
+      int len = p - buffer;
       buffer[len] = 0;
 
       if (process_numstr(buffer + 2, base, &reason)) {
@@ -2416,6 +2418,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
       // use strtoll to obtain the value
       *tok = mktoken(sp, TOK_INTEGER);
       errno = 0;
+      char *q;
       tok->u.int64 = strtoll(buffer + 2, &q, base);
       if (errno || *q || q == buffer + 2) {
         return RETERROR(sp->ebuf, lineno, "error parsing integer");
@@ -2437,7 +2440,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
   // regular int or float
   p = buffer;
   p += strspn(p, "0123456789_+-.eE");
-  len = p - buffer;
+  int len = p - buffer;
   buffer[len] = 0;
 
   if (process_numstr(buffer, 10, &reason)) {
@@ -2446,6 +2449,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
 
   *tok = mktoken(sp, TOK_INTEGER);
   errno = 0;
+  char *q;
   tok->u.int64 = strtoll(buffer, &q, 10);
   if (errno || *q || q == buffer) {
     if (*q && strchr(".eE", *q)) {
@@ -2461,12 +2465,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
 
 static int scan_bool(scanner_t *sp, token_t *tok) {
   char buffer[10];
-  int len = sp->endp - sp->cur;
-  if (len >= (int)sizeof(buffer)) {
-    len = sizeof(buffer) - 1;
-  }
-  memcpy(buffer, sp->cur, len);
-  buffer[len] = 0; // NUL
+  scan_copystr(sp, buffer, sizeof(buffer));
 
   int lineno = sp->lineno;
   bool val = false;
@@ -2484,7 +2483,7 @@ static int scan_bool(scanner_t *sp, token_t *tok) {
     return RETERROR(sp->ebuf, lineno, "invalid boolean value");
   }
 
-  len = p - buffer;
+  int len = p - buffer;
   *tok = mktoken(sp, TOK_BOOL);
   tok->u.b1 = val;
   tok->str.len = len;
@@ -2663,6 +2662,7 @@ again:
   return 0;
 }
 
+// Check for stack overflow due to excessive number of brackets or braces
 static int check_overflow(scanner_t *sp, token_t *tok) {
   switch (tok->toktyp) {
   case TOK_LBRACK:
