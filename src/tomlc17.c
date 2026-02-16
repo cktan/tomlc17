@@ -778,7 +778,7 @@ toml_result_t toml_parse(const char *src, int len) {
   // Initialize parser
   pp->toptab = mkdatum(TOML_TABLE);
   pp->curtab = &pp->toptab;
-  pp->ebuf.ptr = result.errmsg;
+  pp->ebuf.ptr = result.errmsg;   // parse error will be printed into pp->ebuf
   pp->ebuf.len = sizeof(result.errmsg);
 
   // Alloc memory pool
@@ -789,7 +789,7 @@ toml_result_t toml_parse(const char *src, int len) {
     goto bail;
   }
 
-  // Initialize scanner.
+  // Initialize scanner. Scan error will be printed into pp->ebuf.
   scan_init(&pp->scanner, src, len, pp->ebuf.ptr, pp->ebuf.len);
 
   // Keep parsing until FIN
@@ -2092,21 +2092,26 @@ static int read_time(const char *p, int *hour, int *minute, int *second,
 }
 
 // Reads a timezone from p[]. Return #bytes consumed.
+// tzhours and tzminutes restricted to 2-char integers only.
 static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
   const char *pp = p;
+  
+  // Default values
   *tzhour = *tzminute = 0;
   *tzsign = '+';
-  // look for Zulu
+  
+  // Look for Zulu
   if (*p == 'Z' || *p == 'z') {
-    return 1;
+    return 1; // done! tz is +00:00.
   }
 
+  // Look for +/-
   *tzsign = *p++;
   if (!(*tzsign == '+' || *tzsign == '-')) {
     return 0;
   }
 
-  // look for HH:MM
+  // Look for HH:MM
   int n;
   n = read_int(p, tzhour);
   if (n != 2 || p[2] != ':') {
@@ -2187,17 +2192,22 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   }
   toktyp = TOK_DATE;
   p += n;
+
+  // Check if there is a time component
   if (!((p[0] == 'T' || p[0] == ' ' || p[0] == 't') && isdigit(p[1]) &&
         isdigit(p[2]) && p[3] == ':')) {
     goto done; // date only
   }
 
+  // Read the time
   n = read_time(p += 1, &hour, &minute, &sec, &usec);
   if (!n) {
     return RETERROR(sp->ebuf, lineno, "invalid timestamp");
   }
   toktyp = TOK_DATETIME;
   p += n;
+
+  // Read the (optional) timezone 
   char tzsign;
   int tzhour, tzminute;
   n = read_tzone(p, &tzsign, &tzhour, &tzminute);
@@ -2206,6 +2216,9 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   }
   toktyp = TOK_DATETIMETZ;
   p += n;
+
+  // Check tzminute range. This must be done here instead of is_valid_timezone()
+  // because we combine tzhour and tzminute into tz (by minutes only).
   if (!(0 <= tzminute && tzminute < 60)) {
     return RETERROR(sp->ebuf, lineno, "invalid timezone");
   }
@@ -2227,6 +2240,7 @@ done:
   tok->u.tsval.usec = usec;
   tok->u.tsval.tz = tz;
 
+  // Do some error checks based on type
   switch (tok->toktyp) {
   case TOK_TIME:
     if (!is_valid_time(hour, minute, sec, usec)) {
@@ -2258,6 +2272,10 @@ done:
   return 0;
 }
 
+
+// Given a toml number (int and float) in buffer[]:
+//   1. squeeze out '_'
+//   2. check for syntax restrictions 
 static int process_numstr(char *buffer, int base, const char **reason) {
   // squeeze out _
   char *q = strchr(buffer, '_');
