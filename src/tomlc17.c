@@ -214,18 +214,17 @@ static int scan_value(scanner_t *sp, token_t *tok);
 static scanner_state_t scan_mark(scanner_t *sp);
 static void scan_restore(scanner_t *sp, scanner_state_t state);
 
+static inline int min(int a, int b) { return a < b ? a : b; }
+
 // Copy up to dstsz - 1 chars from the current position of the scanner
 // to dst.
-static char *scan_copystr(scanner_t *sp, char *dst, int dstsz) {
+static void scan_copystr(scanner_t *sp, char *dst, int dstsz) {
   assert(dstsz > 0);
-  int len = sp->endp - sp->cur;
-  if (len > dstsz - 1) {
-    len = dstsz - 1; // account for NUL
+  int len = min(sp->endp - sp->cur, dstsz - 1); // account for NUL
+  if (len > 0) {
+    memcpy(dst, sp->cur, len);
+    dst[len] = 0;
   }
-  assert(len >= 0);
-  memcpy(dst, sp->cur, len);
-  dst[len] = 0;
-  return dst;
 }
 
 // Parser object
@@ -1701,12 +1700,15 @@ static int scan_get(scanner_t *sp) {
 // Check if the next char matches ch.
 static inline bool scan_match(scanner_t *sp, int ch) {
   const char *p = sp->cur;
+  // exact match? done.
   if (p < sp->endp && *p == ch) {
     return true;
   }
+  // \n also matches \r\n
   if (ch == '\n' && p + 1 < sp->endp) {
     return p[0] == '\r' && p[1] == '\n';
   }
+  // not a match
   return false;
 }
 
