@@ -2576,9 +2576,6 @@ static void scan_restore(scanner_t *sp, scanner_state_t mark) {
 static int scan_next(scanner_t *sp, bool keymode, token_t *tok) {
 again:
   *tok = mktoken(sp, TOK_FIN);
-  if (sp->errmsg) {
-    return -1;
-  }
 
   int ch = S_GET();
   if (ch == TOK_FIN) {
@@ -2693,14 +2690,24 @@ static int check_overflow(scanner_t *sp, token_t *tok) {
 }
 
 static int scan_key(scanner_t *sp, token_t *tok) {
-  DO(scan_next(sp, true, tok));
-  DO(check_overflow(sp, tok));
+  if (sp->errmsg) {
+    return -1;
+  }
+  if (scan_next(sp, true, tok) || check_overflow(sp, tok)) {
+    sp->errmsg = sp->ebuf.ptr;
+    return -1;
+  }
   return 0;
 }
 
 static int scan_value(scanner_t *sp, token_t *tok) {
-  DO(scan_next(sp, false, tok));
-  DO(check_overflow(sp, tok));
+  if (sp->errmsg) {
+    return -1;
+  }
+  if (scan_next(sp, false, tok) || check_overflow(sp, tok)) {
+    sp->errmsg = sp->ebuf.ptr;
+    return -1;
+  }
   return 0;
 }
 
