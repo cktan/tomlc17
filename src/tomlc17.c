@@ -27,9 +27,9 @@ static toml_option_t toml_option = {0, realloc, free};
   else                                                                         \
     (void)0
 
-// Copy string src to dst where dst is limited to dstlen in size that includes
+// Copy string src to dst where dst is limited to dstsz that includes
 // NUL. Return 0 on success, -1 otherwise (because src[] is longer than dst[]).
-static int copystring(char *dst, int dstsz, const char *src) {
+static inline int copystring(char *dst, int dstsz, const char *src) {
   int srcsz = strlen(src) + 1;
   if (srcsz > dstsz) {
     return -1;
@@ -183,6 +183,7 @@ struct token_t {
 
   // values represented by str
   union {
+    const char *escp; // point to an esc char in str
     int64_t int64;
     double fp64;
     bool b1;
@@ -1575,10 +1576,14 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
   }
 
   // if there is no escape char, then done!
-  p = memchr(ret_span->ptr, '\\', ret_span->len);
-  if (!p) {
+  if (!tok.u.escp) {
     return 0; // success
   }
+
+  // p points to the backslash
+  p += (tok.u.escp - tok.str.ptr);
+  assert(p - ret_span->ptr == tok.u.escp - tok.str.ptr);
+  assert(*p == '\\');
 
   // Normalize the escaped chars
   char *dst = p;
@@ -1784,6 +1789,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
 
   *tok = mktoken(sp, TOK_MLSTRING);
   // scan until terminating """
+  const char *escp = NULL;
   while (1) {
     if (S_MATCH3('"')) {
       if (S_MATCH4('"')) {
@@ -1810,7 +1816,13 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
       }
       continue;
     }
-    // ch is backslash; handle escape char
+    // ch is backslash
+    if (!escp) {
+      escp = sp->cur - 1;
+      assert(*escp == '\\');
+    }
+
+    // handle escape char
     ch = S_GET();
     if (ch && strchr("btnfre\"\\", ch)) {
       // skip \", \\, \b, \f, \n, \r, \t
@@ -1865,6 +1877,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
     return RETERROR(sp->ebuf, sp->lineno, "bad escape char in string");
   }
   tok->str.len = sp->cur - tok->str.ptr;
+  tok->u.escp = escp;
 
   assert(S_MATCH3('"'));
   S_GET(), S_GET(), S_GET();
@@ -1880,6 +1893,7 @@ static int scan_string(scanner_t *sp, token_t *tok) {
 
   // scan until closing "
   *tok = mktoken(sp, TOK_STRING);
+  const char *escp = NULL;
   while (!S_MATCH('"')) {
     int ch = S_GET();
     if (ch == TOK_FIN) {
@@ -1892,7 +1906,13 @@ static int scan_string(scanner_t *sp, token_t *tok) {
       }
       continue;
     }
-    // ch is backslash; handle escape char
+    // ch is backslash
+    if (!escp) {
+      escp = sp->cur - 1;
+      assert(*escp == '\\');
+    }
+
+    // handle escape char
     ch = S_GET();
     if (ch && strchr("btnfre\"\\", ch)) {
       // skip \b, \t, \n, \f, \r, \e, \", \\  .
@@ -1920,6 +1940,7 @@ static int scan_string(scanner_t *sp, token_t *tok) {
     }
   }
   tok->str.len = sp->cur - tok->str.ptr;
+  tok->u.escp = escp;
 
   assert(S_MATCH('"'));
   S_GET(); // skip the terminating "
