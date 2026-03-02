@@ -215,7 +215,9 @@ static int scan_value(scanner_t *sp, token_t *tok);
 static scanner_state_t scan_mark(scanner_t *sp);
 static void scan_restore(scanner_t *sp, scanner_state_t state);
 
+#ifndef min
 static inline int min(int a, int b) { return a < b ? a : b; }
+#endif
 
 // Copy up to dstsz - 1 chars from the current position of the scanner
 // to dst.
