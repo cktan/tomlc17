@@ -56,7 +56,7 @@ static int RETERROR(ebuf_t ebuf, int lineno, const char *fmt, ...) {
   char *p = ebuf.ptr;
   char *q = p + ebuf.len;
   if (lineno) {
-    snprintf(p, q - p, "(line %d) ", lineno);
+    snprintf(p, p < q ? q - p : 0, "(line %d) ", lineno);
     p += strlen(p);
   }
   vsnprintf(p, p < q ? q - p : 0, fmt, args);
