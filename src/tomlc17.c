@@ -59,7 +59,7 @@ static int RETERROR(ebuf_t ebuf, int lineno, const char *fmt, ...) {
     snprintf(p, q - p, "(line %d) ", lineno);
     p += strlen(p);
   }
-  vsnprintf(p, q - p, fmt, args);
+  vsnprintf(p, p < q ? q - p : 0, fmt, args);
   return -1;
 }
 
@@ -870,7 +870,10 @@ bail:
   datum_free(&pp->toptab);
   pool_destroy(pp->pool);
   result.ok = false;
-  assert(result.errmsg[0]); // make sure there is an errmsg
+  if (result.errmsg[0] == '\0') {
+    assert(0);
+    snprintf(result.errmsg, sizeof(result.errmsg), "Error parsing TOML file");
+  }
   return result;
 }
 
