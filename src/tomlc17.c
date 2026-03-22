@@ -2541,7 +2541,7 @@ static bool test_number(const char *p, const char *endp) {
   if (&p[0] < endp && *p && strchr("0123456789+-._", *p)) {
     return true;
   }
-  if (&p[3] < endp) {
+  if (&p[2] < endp) {
     if (0 == memcmp(p, "nan", 3) || 0 == memcmp(p, "inf", 3)) {
       return true;
     }
