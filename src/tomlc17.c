@@ -68,7 +68,8 @@ static int RETERROR(ebuf_t ebuf, int lineno, const char *fmt, ...) {
  */
 typedef struct pool_t pool_t;
 struct pool_t {
-  int top, max;
+  int max;     // size of buf[]
+  int top;     // offset of first free byte in buf[]
   char buf[1]; // first byte starts here
 };
 
