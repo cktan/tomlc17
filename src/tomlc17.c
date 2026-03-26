@@ -2362,15 +2362,6 @@ static int process_numstr(char *buffer, int base, const char **reason) {
       *reason = "leading 0 in numbers";
       return -1;
     }
-
-    // 1e+01 is also an error
-    if (0 != (q = strchr(buffer, 'e'))) {
-      q += (*q == '+' || *q == '-') ? 1 : 0;
-      if (q[0] == '0' && isdigit(q[1])) {
-        *reason = "leading 0 in numbers";
-        return -1;
-      }
-    }
   }
 
   return 0;
