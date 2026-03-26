@@ -253,7 +253,9 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
       return &tab->u.tab.value[i];
     }
   }
-  // Expand pkey[], plen[] and value[]
+  // Expand pkey[], plen[] and value[]. The following does this
+  // separately for pkey, plen and value, and it is safe on partial
+  // failure, i.e. only the first one succeeded.
   {
     char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
     if (!pkey) {
