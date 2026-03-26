@@ -726,17 +726,13 @@ toml_result_t toml_parse_file(FILE *fp) {
     assert(top <= max);
     if (top == max) {
       // need to extend buf[]
-      int tmpmax = (max * 1.5) + 1000;
-      if (tmpmax < 0) {
-        // the real max is INT_MAX - 1 to account for terminating NUL.
-        if (max < INT_MAX - 1) {
-          tmpmax = INT_MAX - 1;
-        } else {
-          snprintf(result.errmsg, sizeof(result.errmsg),
-                   "file is bigger than %d bytes", INT_MAX - 1);
-          FREE(buf);
-          return result;
-        }
+      int64_t tmpmax64 = (int64_t)max * 3 / 2 + 1000;
+      int tmpmax = (tmpmax64 > INT_MAX - 1) ? INT_MAX - 1 : (int)tmpmax64;
+      if (tmpmax == INT_MAX - 1) {
+	snprintf(result.errmsg, sizeof(result.errmsg),
+		 "file is too big");
+	FREE(buf);
+	return result;
       }
       // add an extra byte for terminating NUL
       char *tmp = REALLOC(buf, tmpmax + 1);
