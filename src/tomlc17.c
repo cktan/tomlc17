@@ -6,13 +6,13 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 const toml_datum_t DATUM_ZERO = {0};
 
@@ -500,8 +500,7 @@ static bool datum_equiv(toml_datum_t a, toml_datum_t b) {
   case TOML_INT64:
     return a.u.int64 == b.u.int64;
   case TOML_FP64:
-    return a.u.fp64 == b.u.fp64 ||
-      (isnan(a.u.fp64) && isnan(b.u.fp64));
+    return a.u.fp64 == b.u.fp64 || (isnan(a.u.fp64) && isnan(b.u.fp64));
   case TOML_BOOLEAN:
     return !!a.u.boolean == !!b.u.boolean;
   case TOML_DATE:
@@ -733,10 +732,9 @@ toml_result_t toml_parse_file(FILE *fp) {
       int64_t tmpmax64 = (int64_t)max * 3 / 2 + 1000;
       int tmpmax = (tmpmax64 > INT_MAX - 1) ? INT_MAX - 1 : (int)tmpmax64;
       if (tmpmax == INT_MAX - 1) {
-	snprintf(result.errmsg, sizeof(result.errmsg),
-		 "file is too big");
-	FREE(buf);
-	return result;
+        snprintf(result.errmsg, sizeof(result.errmsg), "file is too big");
+        FREE(buf);
+        return result;
       }
       // add an extra byte for terminating NUL
       char *tmp = REALLOC(buf, tmpmax + 1);
@@ -889,45 +887,14 @@ static int token_to_string(parser_t *pp, token_t tok, toml_datum_t *ret) {
   return 0;
 }
 
-// Convert TIME token to a datum.
-static int token_to_time(parser_t *pp, token_t tok, toml_datum_t *ret) {
+// Convert a TIME/DATE/DATETIME/DATETIMETZ to a datum
+static int token_to_timestamp(parser_t *pp, token_t tok, toml_datum_t *ret) {
   (void)pp;
-  *ret = mkdatum(TOML_TIME);
-  ret->u.ts.hour = tok.u.tsval.hour;
-  ret->u.ts.minute = tok.u.tsval.minute;
-  ret->u.ts.second = tok.u.tsval.sec;
-  ret->u.ts.usec = tok.u.tsval.usec;
-  return 0;
-}
-
-// Convert a DATE token to a datum.
-static int token_to_date(parser_t *pp, token_t tok, toml_datum_t *ret) {
-  (void)pp;
-  *ret = mkdatum(TOML_DATE);
-  ret->u.ts.year = tok.u.tsval.year;
-  ret->u.ts.month = tok.u.tsval.month;
-  ret->u.ts.day = tok.u.tsval.day;
-  return 0;
-}
-
-// Convert a DATETIME token to a datum.
-static int token_to_datetime(parser_t *pp, token_t tok, toml_datum_t *ret) {
-  (void)pp;
-  *ret = mkdatum(TOML_DATETIME);
-  ret->u.ts.year = tok.u.tsval.year;
-  ret->u.ts.month = tok.u.tsval.month;
-  ret->u.ts.day = tok.u.tsval.day;
-  ret->u.ts.hour = tok.u.tsval.hour;
-  ret->u.ts.minute = tok.u.tsval.minute;
-  ret->u.ts.second = tok.u.tsval.sec;
-  ret->u.ts.usec = tok.u.tsval.usec;
-  return 0;
-}
-
-// Convert a DATETIMETZ token to a datum.
-static int token_to_datetimetz(parser_t *pp, token_t tok, toml_datum_t *ret) {
-  (void)pp;
-  *ret = mkdatum(TOML_DATETIMETZ);
+  static const toml_type_t map[] = {[TOK_TIME] = TOML_TIME,
+                                    [TOK_DATE] = TOML_DATE,
+                                    [TOK_DATETIME] = TOML_DATETIME,
+                                    [TOK_DATETIMETZ] = TOML_DATETIMETZ};
+  *ret = mkdatum(map[tok.toktyp]);
   ret->u.ts.year = tok.u.tsval.year;
   ret->u.ts.month = tok.u.tsval.month;
   ret->u.ts.day = tok.u.tsval.day;
@@ -1267,13 +1234,10 @@ static int parse_val(parser_t *pp, token_t tok, toml_datum_t *ret) {
   case TOK_MLLITSTRING:
     return token_to_string(pp, tok, ret);
   case TOK_TIME:
-    return token_to_time(pp, tok, ret);
   case TOK_DATE:
-    return token_to_date(pp, tok, ret);
   case TOK_DATETIME:
-    return token_to_datetime(pp, tok, ret);
   case TOK_DATETIMETZ:
-    return token_to_datetimetz(pp, tok, ret);
+    return token_to_timestamp(pp, tok, ret);
   case TOK_INTEGER:
     return token_to_int64(pp, tok, ret);
   case TOK_FLOAT:
@@ -1691,7 +1655,9 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
   return 0;
 }
 
-// -------------- scanner functions
+// ===================================================================
+// ==    SCANNER SECTOIN
+// ===================================================================
 
 // Get the next char
 static int scan_get(scanner_t *sp) {
