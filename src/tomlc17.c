@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 const toml_datum_t DATUM_ZERO = {0};
 
@@ -499,7 +500,8 @@ static bool datum_equiv(toml_datum_t a, toml_datum_t b) {
   case TOML_INT64:
     return a.u.int64 == b.u.int64;
   case TOML_FP64:
-    return a.u.fp64 == b.u.fp64;
+    return a.u.fp64 == b.u.fp64 ||
+      (isnan(a.u.fp64) && isnan(b.u.fp64));
   case TOML_BOOLEAN:
     return !!a.u.boolean == !!b.u.boolean;
   case TOML_DATE:
