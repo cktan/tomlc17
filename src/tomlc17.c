@@ -894,6 +894,17 @@ static int token_to_timestamp(parser_t *pp, token_t tok, toml_datum_t *ret) {
                                     [TOK_DATE] = TOML_DATE,
                                     [TOK_DATETIME] = TOML_DATETIME,
                                     [TOK_DATETIMETZ] = TOML_DATETIMETZ};
+  switch (tok.toktyp) {
+  case TOK_TIME:
+  case TOK_DATE:
+  case TOK_DATETIME:
+  case TOK_DATETIMETZ:
+    break;
+  default:
+    assert(0 && "unexpected token type");
+    return -1;
+  }
+
   *ret = mkdatum(map[tok.toktyp]);
   ret->u.ts.year = tok.u.tsval.year;
   ret->u.ts.month = tok.u.tsval.month;
