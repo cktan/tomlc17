@@ -203,8 +203,8 @@ struct scanner_t {
   const char *endp; // end of src[]. always pointing at a NUL char.
   const char *cur;  // current char in src[]
   int lineno;       // line number of current char
-  char *errmsg;     // point to errbuf if there was an error
-  ebuf_t ebuf;
+  char *errmsg;     // set to ebuf.ptr if there was an error
+  ebuf_t ebuf;      // buffer to store error message
 
   int bracket_level; // count depth of [ ]
   int brace_level;   // count depth of { }
