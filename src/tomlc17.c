@@ -239,24 +239,35 @@ struct parser_t {
   toml_datum_t toptab;  // top table
   toml_datum_t *curtab; // current table
   pool_t *pool;         // memory pool for strings
-  ebuf_t ebuf;
+  ebuf_t ebuf;          // buffer to store last error message
 };
+
+// Find key in tab and return its index. If not found, return -1.
+static int tab_find(toml_datum_t *tab, span_t key) {
+  assert(tab->type == TOML_TABLE);
+  for (int i = 0, top = tab->u.tab.size; i < top; i++) {
+    if (tab->u.tab.len[i] == key.len &&
+        0 == memcmp(tab->u.tab.key[i], key.ptr, key.len)) {
+      return i;
+    }
+  }
+  return -1;
+}
 
 // Put key into tab dictionary. Return a place to
 // the datum for the key on success, or NULL otherwise.
 static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
                                  const char **reason) {
   assert(tab->type == TOML_TABLE);
-  int N = tab->u.tab.size;
-  for (int i = 0; i < N; i++) {
-    if (tab->u.tab.len[i] == key.len &&
-        0 == memcmp(tab->u.tab.key[i], key.ptr, key.len)) {
-      return &tab->u.tab.value[i];
-    }
+  int i = tab_find(tab, key);
+  if (i >= 0) {
+    return &tab->u.tab.value[i];
   }
+
   // Expand pkey[], plen[] and value[]. The following does this
   // separately for pkey, plen and value, and it is safe on partial
   // failure, i.e. only the first one succeeded.
+  int N = tab->u.tab.size;
   {
     char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
     if (!pkey) {
@@ -285,7 +296,8 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
     tab->u.tab.value = value;
   }
 
-  // Append the new key/value
+  // Append the new key. The value is set to DATUM_ZERO. Caller will
+  // overwrite with a valid datum.
   tab->u.tab.size = N + 1;
   tab->u.tab.key[N] = (char *)key.ptr;
   tab->u.tab.len[N] = key.len;
@@ -293,29 +305,17 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
   return &tab->u.tab.value[N];
 }
 
-// Find key in tab and return its index. If not found, return -1.
-static int tab_find(toml_datum_t *tab, span_t key) {
-  assert(tab->type == TOML_TABLE);
-  for (int i = 0, top = tab->u.tab.size; i < top; i++) {
-    if (tab->u.tab.len[i] == key.len &&
-        0 == memcmp(tab->u.tab.key[i], key.ptr, key.len)) {
-      return i;
-    }
-  }
-  return -1;
-}
-
 // Add a new key in tab. Return 0 on success, -1 otherwise.
 // On error, *reason will point to an error message.
 static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
                    const char **reason) {
   assert(tab->type == TOML_TABLE);
-  if (-1 != tab_find(tab, newkey)) {
-    *reason = "duplicate key";
-    return -1;
-  }
   toml_datum_t *pvalue = tab_emplace(tab, newkey, reason);
   if (!pvalue) {
+    return -1;
+  }
+  if (pvalue->type) {
+    *reason = "duplicate key";
     return -1;
   }
   *pvalue = newvalue;
