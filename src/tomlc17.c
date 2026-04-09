@@ -627,7 +627,6 @@ bool toml_equiv(const toml_result_t *r1, const toml_result_t *r2) {
  * or a TOML_UNKNOWN otherwise.
  */
 toml_datum_t toml_get(toml_datum_t datum, const char *key) {
-  toml_datum_t ret = {0};
   if (datum.type == TOML_TABLE) {
     int n = datum.u.tab.size;
     const char **pkey = datum.u.tab.key;
@@ -638,7 +637,7 @@ toml_datum_t toml_get(toml_datum_t datum, const char *key) {
       }
     }
   }
-  return ret;
+  return DATUM_ZERO;
 }
 
 /**
