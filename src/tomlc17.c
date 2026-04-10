@@ -1666,7 +1666,7 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
 }
 
 // ===================================================================
-// ==    SCANNER SECTOIN
+// ==    SCANNER SECTION
 // ===================================================================
 
 // Get the next char

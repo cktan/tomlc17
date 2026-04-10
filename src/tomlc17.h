@@ -161,7 +161,7 @@ TOML_EXTERN toml_result_t toml_merge(const toml_result_t *r1,
                                      const toml_result_t *r2);
 
 /**
- *  Check if two results are the same. Dictinary and array orders are
+ *  Check if two results are the same. Dictionary and array orders are
  *  sensitive.
  */
 TOML_EXTERN bool toml_equiv(const toml_result_t *r1, const toml_result_t *r2);
