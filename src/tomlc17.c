@@ -222,13 +222,13 @@ static inline int min(int a, int b) { return a < b ? a : b; }
 #endif
 
 // Copy up to dstsz - 1 chars from the current position of the scanner
-// to dst.
+// to dst, and always terminate dst[] with a NUL if dstsz > 0.
 static void scan_copystr(scanner_t *sp, char *dst, int dstsz) {
   assert(dstsz > 0);
   int len = min(sp->endp - sp->cur, dstsz - 1); // account for NUL
   if (len > 0) {
     memcpy(dst, sp->cur, len);
-    dst[len] = 0;
+    dst[len] = '\0';
   }
 }
 
@@ -264,38 +264,34 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
     return &tab->u.tab.value[i];
   }
 
-  // Expand pkey[], plen[] and value[]. The following does this
-  // separately for pkey, plen and value, and it is safe on partial
-  // failure, i.e. only the first one succeeded.
+  // Expand pkey[], plen[] and value[].
   int N = tab->u.tab.size;
   {
     char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
-    if (!pkey) {
-      *reason = "out of memory";
-      return NULL;
-    }
-    tab->u.tab.key = (const char **)pkey;
-  }
-
-  {
     int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(N + 1));
-    if (!plen) {
-      *reason = "out of memory";
-      return NULL;
-    }
-    tab->u.tab.len = plen;
-  }
-
-  {
     toml_datum_t *value =
         REALLOC(tab->u.tab.value, sizeof(*value) * align8(N + 1));
-    if (!value) {
+
+    // on success, must save new pointers in tab->u.tab because the
+    // old memory areas are gone.
+    if (pkey) {
+      tab->u.tab.key = (const char **)pkey;
+    }
+    if (plen) {
+      tab->u.tab.len = plen;
+    }
+    if (value) {
+      tab->u.tab.value = value;
+    }
+
+    // if any fail, it is safe to bail out.
+    if (!pkey || !pkey || !value) {
       *reason = "out of memory";
       return NULL;
     }
-    tab->u.tab.value = value;
   }
 
+  // There is sufficient space in all the arrays for one more element.
   // Append the new key. The value is set to DATUM_ZERO. Caller will
   // overwrite with a valid datum.
   tab->u.tab.size = N + 1;
@@ -655,6 +651,8 @@ toml_datum_t toml_seek(toml_datum_t table, const char *multipart_key) {
   // Make a mutable copy of the multipart_key for splitting
   char buf[256];
   if (copystring(buf, sizeof(buf), multipart_key)) {
+    // if the multipart_key is longer than buffer, just
+    // signal a not-found.
     return DATUM_ZERO;
   }
 
@@ -2414,8 +2412,8 @@ static int scan_number(scanner_t *sp, token_t *tok) {
 
       // use strtoll to obtain the value
       *tok = mktoken(sp, TOK_INTEGER);
-      errno = 0;
       char *q;
+      errno = 0;
       tok->u.int64 = strtoll(buffer + 2, &q, base);
       if (errno || *q || q == buffer + 2) {
         return SETERROR(sp->ebuf, lineno, "error parsing integer");
@@ -2445,8 +2443,8 @@ static int scan_number(scanner_t *sp, token_t *tok) {
   }
 
   *tok = mktoken(sp, TOK_INTEGER);
-  errno = 0;
   char *q;
+  errno = 0;
   tok->u.int64 = strtoll(buffer, &q, 10);
   if (errno || *q || q == buffer) {
     if (*q && strchr(".eE", *q)) {
