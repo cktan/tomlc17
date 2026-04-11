@@ -1217,9 +1217,12 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     }
 
     // obtain the value
-    toml_datum_t value;
     DO(scan_value(&pp->scanner, &tok));
-    DO(parse_val(pp, tok, &value));
+    toml_datum_t value = DATUM_ZERO;
+    if (parse_val(pp, tok, &value)) {
+      datum_free(&value);
+      return -1;
+    }
 
     // Add the value to tab.
     const char *reason;
@@ -1466,9 +1469,12 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
   }
 
   // Obtain the value
-  toml_datum_t val;
   DO(scan_value(&pp->scanner, &tok));
-  DO(parse_val(pp, tok, &val));
+  toml_datum_t val;
+  if (parse_val(pp, tok, &val)) {
+    datum_free(&val);
+    return -1;
+  }
 
   // Locate the last table using keypart[]
   const char *reason;

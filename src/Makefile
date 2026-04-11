@@ -9,7 +9,7 @@ LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
 EXEC = 
 
 ifdef DEBUG
-    CFLAGS += -O0 -g
+    CFLAGS += -O0 -g -fsanitize=address,undefined
 else
     CFLAGS += -O3 -DNDEBUG
 endif

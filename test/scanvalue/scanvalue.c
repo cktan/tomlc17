@@ -127,7 +127,7 @@ int main(int argc, const char *argv[]) {
     token_t tok;
     if (scan_value(sp, &tok)) {
       printf("%s\n", errbuf);
-      return -1;
+      goto bail;
     }
     if (tok.toktyp == TOK_FIN) {
       break;
@@ -137,9 +137,13 @@ int main(int argc, const char *argv[]) {
 
   if (sp->errmsg) {
     printf("ERROR: %s (line %d)\n", sp->errmsg, sp->lineno);
-    exit(1);
+    goto bail;
   }
 
   free(content);
   return 0;
+
+bail:
+  free(content);
+  return 1;
 }

@@ -256,6 +256,7 @@ int main(int argc, const char *argv[]) {
 
   if (!result.ok) {
     printf("%s\n", result.errmsg);
+    toml_free(result);
     exit(1);
   }
 

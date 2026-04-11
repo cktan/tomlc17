@@ -1,4 +1,4 @@
-CFLAGS := -O0 -g -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
+CFLAGS := -O0 -g -fsanitize=address,undefined -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
 
 all: driver
 
