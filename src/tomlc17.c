@@ -61,6 +61,7 @@ static int SETERROR(ebuf_t ebuf, int lineno, const char *fmt, ...) {
     p += strlen(p);
   }
   vsnprintf(p, p < q ? q - p : 0, fmt, args);
+  va_end(args);
   return -1;
 }
 
