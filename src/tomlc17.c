@@ -869,7 +869,8 @@ bail:
   result.ok = false;
   if (result.errmsg[0] == '\0') {
     assert(0);
-    snprintf(result.errmsg, sizeof(result.errmsg), "Error parsing TOML file");
+    snprintf(result.errmsg, sizeof(result.errmsg), "Error near line %d\n",
+             pp->scanner.lineno);
   }
   return result;
 }
@@ -1117,17 +1118,21 @@ static int parse_inline_array(parser_t *pp, token_t tok,
                       "syntax error while parsing array: missing comma");
     }
 
-    // This is a valid value!
+    // This is a valid value! Obtain the value.
+    toml_datum_t value = DATUM_ZERO;
+    if (parse_val(pp, tok, &value)) {
+      datum_free(&value);
+      return -1;
+    }
 
     // Add the value to the array.
     const char *reason;
     toml_datum_t *pelem = arr_emplace(ret_datum, &reason);
     if (!pelem) {
+      datum_free(&value);
       return SETERROR(pp->ebuf, tok.lineno, "while parsing array: %s", reason);
     }
-
-    // Parse the value and save into array.
-    DO(parse_val(pp, tok, pelem));
+    *pelem = value;
 
     // Need comma before the next value.
     need_comma = 1;
@@ -1613,6 +1618,8 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       char buf[3];
       memcpy(buf, p + 2, 2);
       buf[2] = 0;
+      // There is no need to check for two hex digits here because
+      // the scanner already checked it.
       int32_t ucs = strtol(buf, 0, 16);
       int n = ucs_to_utf8(ucs, dst);
       if (n < 0) {
@@ -1629,6 +1636,8 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       int sz = (p[1] == 'u' ? 4 : 8);
       memcpy(buf, p + 2, sz);
       buf[sz] = 0;
+      // There is no need to check for 4 or 8 hex digits here because
+      // the scanner already checked it.
       int32_t ucs = strtol(buf, 0, 16);
       if (0xD800 <= ucs && ucs <= 0xDFFF) {
         // explicitly prohibit surrogates (non-scalar unicode code point)
