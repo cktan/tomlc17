@@ -1227,6 +1227,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     // Add the value to tab.
     const char *reason;
     if (tab_add(tab, lastkeypart, value, &reason)) {
+      datum_free(&value);
       return SETERROR(pp->ebuf, tok.lineno, "%s", reason);
     }
     need_comma = 1, was_comma = 0;
@@ -1468,14 +1469,6 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
     return SETERROR(pp->ebuf, tok.lineno, "expect '='");
   }
 
-  // Obtain the value
-  DO(scan_value(&pp->scanner, &tok));
-  toml_datum_t val;
-  if (parse_val(pp, tok, &val)) {
-    datum_free(&val);
-    return -1;
-  }
-
   // Locate the last table using keypart[]
   const char *reason;
   toml_datum_t *tab = pp->curtab;
@@ -1518,8 +1511,17 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
         "cannot extend a previously defined table using dotted expression");
   }
 
+  // Obtain the value
+  DO(scan_value(&pp->scanner, &tok));
+  toml_datum_t newval = DATUM_ZERO;
+  if (parse_val(pp, tok, &newval)) {
+    datum_free(&newval);
+    return -1;
+  }
+
   // Add a new key/value for tab.
-  if (tab_add(tab, keypart.span[keypart.nspan - 1], val, &reason)) {
+  if (tab_add(tab, keypart.span[keypart.nspan - 1], newval, &reason)) {
+    datum_free(&newval);
     return SETERROR(pp->ebuf, keylineno, "%s", reason);
   }
 
