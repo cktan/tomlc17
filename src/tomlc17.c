@@ -2376,7 +2376,7 @@ static int scan_float(scanner_t *sp, token_t *tok) {
 
   const char *reason;
   if (process_numstr(buffer, 10, &reason)) {
-    return SETERROR(sp->ebuf, lineno, reason);
+    return SETERROR(sp->ebuf, lineno, "%s", reason);
   }
 
   errno = 0;
@@ -2425,7 +2425,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
       buffer[len] = 0;
 
       if (process_numstr(buffer + 2, base, &reason)) {
-        return SETERROR(sp->ebuf, lineno, reason);
+        return SETERROR(sp->ebuf, lineno, "%s", reason);
       }
 
       // use strtoll to obtain the value
@@ -2457,7 +2457,7 @@ static int scan_number(scanner_t *sp, token_t *tok) {
   buffer[len] = 0;
 
   if (process_numstr(buffer, 10, &reason)) {
-    return SETERROR(sp->ebuf, lineno, reason);
+    return SETERROR(sp->ebuf, lineno, "%s", reason);
   }
 
   *tok = mktoken(sp, TOK_INTEGER);
