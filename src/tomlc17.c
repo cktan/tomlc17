@@ -706,7 +706,8 @@ toml_result_t toml_parse_file_ex(const char *fname) {
   toml_result_t result = {0};
   FILE *fp = fopen(fname, "r");
   if (!fp) {
-    snprintf(result.errmsg, sizeof(result.errmsg), "fopen: %s", fname);
+    snprintf(result.errmsg, sizeof(result.errmsg), "fopen %s: %s", fname,
+             strerror(errno));
     return result;
   }
   result = toml_parse_file(fp);
@@ -1675,8 +1676,8 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       p += strspn(p, " \t\r\n");
       continue;
     default:
-      *dst++ = *p++;
-      continue;
+      return SETERROR(pp->ebuf, tok.lineno,
+                      "internal: unknown escape char \\%c", p[1]);
     }
   }
   *dst = 0;
