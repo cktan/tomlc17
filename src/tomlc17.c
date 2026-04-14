@@ -286,7 +286,7 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
     }
 
     // if any fail, it is safe to bail out.
-    if (!pkey || !pkey || !value) {
+    if (!pkey || !plen || !value) {
       *reason = "out of memory";
       return NULL;
     }
