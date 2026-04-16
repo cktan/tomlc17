@@ -658,19 +658,20 @@ toml_datum_t toml_seek(toml_datum_t table, const char *multipart_key) {
   }
 
   // Go through the multipart name part by part.
-  char *p = buf;            // start of current key
-  char *q = strchr(p, '.'); // end of current key
+  char *p = buf;
   toml_datum_t datum = table;
-  while (q && datum.type == TOML_TABLE) {
-    *q = 0;
-    datum = toml_get(datum, p);
-    if (datum.type == TOML_TABLE) {
+  while (datum.type == TOML_TABLE) {
+    char *q = strchr(p, '.');
+    if (q) {
+      // traverse to next key
+      *q = 0;
+      datum = toml_get(datum, p);
       p = q + 1;
-      q = strchr(p, '.');
+      continue;
     }
-  }
 
-  if (!q && datum.type == TOML_TABLE) {
+    // At end of last keypart.
+    // look up p in the final table
     return toml_get(datum, p);
   }
 

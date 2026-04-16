@@ -49,6 +49,13 @@ int main() {
   }
   printf("]\n");
 
+  // Negative test
+  toml_datum_t dummy = toml_seek(result.toptab, "server.dummy");
+  if (dummy.type != TOML_UNKNOWN) {
+    printf("Error: dummy element exists\n");
+    exit(1);
+  }
+
   // Done!
   toml_free(result);
   return 0;
