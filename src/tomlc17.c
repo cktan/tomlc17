@@ -1245,6 +1245,8 @@ static int parse_inline_table(parser_t *pp, token_t tok,
 
 // Parse a value.
 static int parse_val(parser_t *pp, token_t tok, toml_datum_t *ret) {
+  *ret = DATUM_ZERO;  // initialize
+
   // val = string / boolean / array / inline-table / date-time / float / integer
   switch (tok.toktyp) {
   case TOK_STRING:
