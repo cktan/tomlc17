@@ -2585,6 +2585,9 @@ static void scan_restore(scanner_t *sp, scanner_state_t mark) {
 
 // Return the next token
 static int scan_next(scanner_t *sp, bool keymode, token_t *tok) {
+  static const toktyp_t map[128] = {
+      ['\n'] = TOK_ENDL, ['.'] = TOK_DOT,    ['='] = TOK_EQUAL,
+      [','] = TOK_COMMA, ['{'] = TOK_LBRACE, ['}'] = TOK_RBRACE};
 again:
   *tok = mktoken(sp, TOK_FIN);
 
@@ -2594,11 +2597,14 @@ again:
   }
 
   tok->str.len = 1;
-  switch (ch) {
-  case '\n':
-    tok->toktyp = TOK_ENDL;
-    break;
+  if (0 <= ch && ch < 128 && map[ch]) {
+    // map simple char to token type and done
+    tok->toktyp = map[ch];
+    return 0;
+  }
 
+  // handle char that require logic
+  switch (ch) {
   case ' ':
   case '\t':
     goto again; // skip whitespace
@@ -2616,18 +2622,6 @@ again:
     }
     goto again; // skip comment
 
-  case '.':
-    tok->toktyp = TOK_DOT;
-    break;
-
-  case '=':
-    tok->toktyp = TOK_EQUAL;
-    break;
-
-  case ',':
-    tok->toktyp = TOK_COMMA;
-    break;
-
   case '[':
     tok->toktyp = TOK_LBRACK;
     if (keymode && S_MATCH('[')) {
@@ -2644,14 +2638,6 @@ again:
       tok->toktyp = TOK_RRBRACK;
       tok->str.len = 2;
     }
-    break;
-
-  case '{':
-    tok->toktyp = TOK_LBRACE;
-    break;
-
-  case '}':
-    tok->toktyp = TOK_RBRACE;
     break;
 
   case '"':
