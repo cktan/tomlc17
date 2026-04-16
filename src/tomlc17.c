@@ -1245,7 +1245,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
 
 // Parse a value.
 static int parse_val(parser_t *pp, token_t tok, toml_datum_t *ret) {
-  *ret = DATUM_ZERO;  // initialize
+  *ret = DATUM_ZERO; // initialize
 
   // val = string / boolean / array / inline-table / date-time / float / integer
   switch (tok.toktyp) {
@@ -2205,6 +2205,8 @@ static int scan_time(scanner_t *sp, token_t *tok) {
 
 static int scan_timestamp(scanner_t *sp, token_t *tok) {
   int year, month, day, hour, minute, sec, usec, tz;
+  year = month = day = hour = minute = sec = usec = tz = -1;
+
   int n;
   // make a copy of sp->cur into buffer to ensure NUL terminated string
   char buffer[80];
@@ -2212,9 +2214,10 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
 
   toktyp_t toktyp = TOK_FIN;
   int lineno = sp->lineno;
+
+  // See if this a TIME only
   const char *p = buffer;
   if (isdigit(p[0]) && isdigit(p[1]) && p[2] == ':') {
-    year = month = day = hour = minute = sec = usec = tz = -1;
     n = read_time(buffer, &hour, &minute, &sec, &usec);
     if (!n) {
       return SETERROR(sp->ebuf, lineno, "invalid time");
@@ -2224,7 +2227,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
     goto done;
   }
 
-  year = month = day = hour = minute = sec = usec = tz = -1;
+  // Try reading a DATE
   n = read_date(p, &year, &month, &day);
   if (!n) {
     return SETERROR(sp->ebuf, lineno, "invalid date");
@@ -2232,13 +2235,13 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   toktyp = TOK_DATE;
   p += n;
 
-  // Check if there is a time component
+  // Check if there is no time component in addition
   if (!((p[0] == 'T' || p[0] == ' ' || p[0] == 't') && isdigit(p[1]) &&
         isdigit(p[2]) && p[3] == ':')) {
-    goto done; // date only
+    goto done; // no TIME component. we are done.
   }
 
-  // Read the time
+  // Read the TIME
   n = read_time(p += 1, &hour, &minute, &sec, &usec);
   if (!n) {
     return SETERROR(sp->ebuf, lineno, "invalid timestamp");
