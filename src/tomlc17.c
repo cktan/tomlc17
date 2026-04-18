@@ -1615,7 +1615,7 @@ static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
       p += 2;
       continue;
     case 'e':
-      *dst++ = '\e';
+      *dst++ = '\033';
       p += 2;
       continue;
     case 'x': {
