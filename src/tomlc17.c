@@ -145,17 +145,17 @@ enum toktyp_t {
   TOK_DOT = 1,
   TOK_EQUAL,
   TOK_COMMA,
-  TOK_LBRACK,
-  TOK_LLBRACK,
-  TOK_RBRACK,
-  TOK_RRBRACK,
-  TOK_LBRACE,
-  TOK_RBRACE,
+  TOK_LBRACK,  // [
+  TOK_LLBRACK, // [[
+  TOK_RBRACK,  // ]
+  TOK_RRBRACK, // ]]
+  TOK_LBRACE,  // {
+  TOK_RBRACE,  // }
   TOK_LIT,
-  TOK_STRING,
-  TOK_MLSTRING,
-  TOK_LITSTRING,
-  TOK_MLLITSTRING,
+  TOK_STRING,      // "string"
+  TOK_MLSTRING,    // """multi-line-string"""
+  TOK_LITSTRING,   // 'lit-string'
+  TOK_MLLITSTRING, // '''multi-line-lit-string'''
   TOK_TIME,
   TOK_DATE,
   TOK_DATETIME,
