@@ -245,7 +245,7 @@ struct parser_t {
 
 // Find key in tab and return its index. If not found, return -1.
 static int tab_find(toml_datum_t *tab, span_t key) {
-  assert(tab->type == TOML_TABLE);
+  if (tab->type != TOML_TABLE) abort();
   for (int i = 0, top = tab->u.tab.size; i < top; i++) {
     if (tab->u.tab.len[i] == key.len &&
         0 == memcmp(tab->u.tab.key[i], key.ptr, key.len)) {
@@ -259,7 +259,7 @@ static int tab_find(toml_datum_t *tab, span_t key) {
 // the datum for the key on success, or NULL otherwise.
 static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
                                  const char **reason) {
-  assert(tab->type == TOML_TABLE);
+  if (tab->type != TOML_TABLE) abort();
   int i = tab_find(tab, key);
   if (i >= 0) {
     return &tab->u.tab.value[i];
@@ -306,7 +306,7 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
 // On error, *reason will point to an error message.
 static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
                    const char **reason) {
-  assert(tab->type == TOML_TABLE);
+  if (tab->type != TOML_TABLE) abort();
   toml_datum_t *pvalue = tab_emplace(tab, newkey, reason);
   if (!pvalue) {
     return -1;
@@ -322,7 +322,7 @@ static int tab_add(toml_datum_t *tab, span_t newkey, toml_datum_t newvalue,
 // Add a new element into an array. Return 0 on success, -1 otherwise.
 // On error, *reason will point to an error message.
 static toml_datum_t *arr_emplace(toml_datum_t *arr, const char **reason) {
-  assert(arr->type == TOML_ARRAY);
+  if (arr->type != TOML_ARRAY) abort();
   int n = arr->u.arr.size;
   toml_datum_t *elem = REALLOC(arr->u.arr.elem, sizeof(*elem) * align8(n + 1));
   if (!elem) {
