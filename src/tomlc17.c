@@ -138,6 +138,7 @@ static int ucs_to_utf8(uint32_t code, char buf[4]);
 // stack overflow during recursive descent of the parser.
 #define BRACKET_LEVEL_MAX 30
 #define BRACE_LEVEL_MAX 30
+#define TABLE_MAX (1 << 16)
 
 static inline size_t align8(size_t x) { return (((x) + 7) & ~7); }
 
@@ -267,7 +268,7 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
 
   // Expand pkey[], plen[] and value[].
   int N = tab->u.tab.size;
-  if (N > (INT_MAX / (int)sizeof(*tab->u.tab.key)) - 8) {
+  if (N >= TABLE_MAX) {
     *reason = "table too large";
     return NULL;
   }
