@@ -2062,10 +2062,11 @@ static int read_int(const char *p, int *ret) {
   const char *pp = p;
   int val = 0;
   for (; isdigit(*p); p++) {
-    val = val * 10u + (*p - '0');
-    if (val < 0) {
+    int digit = *p - '0';
+    if (val > (INT_MAX - digit) / 10) {
       return 0; // overflowed
     }
+    val = val * 10 + digit;
   }
   *ret = val;
   return p - pp;
