@@ -1197,6 +1197,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     DO(parse_key(pp, tok, &keypart));
 
     // Descend to one keypart before last
+    assert(keypart.nspan > 0);
     span_t lastkeypart = keypart.span[--keypart.nspan];
     toml_datum_t *tab =
         descend_keypart(pp, keylineno, ret_datum, &keypart, false);
@@ -1379,6 +1380,7 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   }
 
   // remove the last keypart from keypart[]
+  assert(keypart.nspan > 0);
   span_t lastkeypart = keypart.span[--keypart.nspan];
 
   // descend the key from the toptab
