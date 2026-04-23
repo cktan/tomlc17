@@ -2060,15 +2060,14 @@ static bool is_valid_timezone(int minute) {
 // Read an int (without signs) from the string p.
 static int read_int(const char *p, int *ret) {
   const char *pp = p;
-  int val = 0;
+  int64_t val = 0;
   for (; isdigit(*p); p++) {
-    int digit = *p - '0';
-    if (val > (INT_MAX - digit) / 10) {
+    val = val * 10 + (*p - '0');
+    if (val > INT_MAX) {
       return 0; // overflowed
     }
-    val = val * 10 + digit;
   }
-  *ret = val;
+  *ret = (int)val;
   return p - pp;
 }
 
