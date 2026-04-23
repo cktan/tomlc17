@@ -267,6 +267,10 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
 
   // Expand pkey[], plen[] and value[].
   int N = tab->u.tab.size;
+  if (N > (INT_MAX / (int)sizeof(*tab->u.tab.key)) - 8) {
+    *reason = "table too large";
+    return NULL;
+  }
   {
     char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
     int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(N + 1));
