@@ -138,8 +138,8 @@ static int ucs_to_utf8(uint32_t code, char buf[4]);
 // stack overflow during recursive descent of the parser.
 #define BRACKET_LEVEL_MAX 30
 #define BRACE_LEVEL_MAX 30
-#define TABLE_MAX (1 << 16)
-#define ARRAY_MAX (1 << 14)
+#define TABLE_MAX (1 << 14) // 16k
+#define ARRAY_MAX (1 << 14) // 16k
 
 static inline size_t align8(size_t x) { return (((x) + 7) & ~7); }
 
