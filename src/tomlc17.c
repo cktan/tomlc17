@@ -177,6 +177,7 @@ struct scanner_state_t {
   scanner_t *sp;
   const char *cur; // points into scanner_t::src[]
   int lineno;      // current line number
+  const char *line_start;
 };
 
 // A scan token
@@ -184,6 +185,7 @@ typedef struct token_t token_t;
 struct token_t {
   toktyp_t toktyp;
   int lineno;
+  int colno;
   span_t str;
 
   // values represented by str
@@ -206,6 +208,7 @@ struct scanner_t {
   const char *endp; // end of src[]. always pointing at a NUL char.
   const char *cur;  // current char in src[]
   int lineno;       // line number of current char
+  const char *line_start;
   char *errmsg;     // set to ebuf.ptr if there was an error
   ebuf_t ebuf;      // buffer to store error message
 
@@ -393,6 +396,9 @@ static void datum_free(toml_datum_t *datum) {
 static int datum_copy(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
                       const char **reason) {
   *dst = mkdatum(src.type);
+  dst->flag = src.flag;
+  dst->lineno = src.lineno;
+  dst->colno = src.colno;
   switch (src.type) {
   case TOML_STRING:
     dst->u.str.ptr = pool_alloc(pool, src.u.str.len + 1);
@@ -812,6 +818,8 @@ toml_result_t toml_parse(const char *src, int len) {
 
   // Initialize parser
   pp->toptab = mkdatum(TOML_TABLE);
+  pp->toptab.lineno = 1;
+  pp->toptab.colno = 1;
   pp->curtab = &pp->toptab;
   pp->ebuf.ptr = result.errmsg; // parse error will be printed into pp->ebuf
   pp->ebuf.len = sizeof(result.errmsg);
@@ -1260,31 +1268,43 @@ static int parse_val(parser_t *pp, token_t tok, toml_datum_t *ret) {
   *ret = DATUM_ZERO; // initialize
 
   // val = string / boolean / array / inline-table / date-time / float / integer
+  int rc = -1;
   switch (tok.toktyp) {
   case TOK_STRING:
   case TOK_MLSTRING:
   case TOK_LITSTRING:
   case TOK_MLLITSTRING:
-    return token_to_string(pp, tok, ret);
+    rc = token_to_string(pp, tok, ret);
+    break;
   case TOK_TIME:
   case TOK_DATE:
   case TOK_DATETIME:
   case TOK_DATETIMETZ:
-    return token_to_timestamp(pp, tok, ret);
-  case TOK_INTEGER:
-    return token_to_int64(pp, tok, ret);
-  case TOK_FLOAT:
-    return token_to_fp64(pp, tok, ret);
-  case TOK_BOOL:
-    return token_to_boolean(pp, tok, ret);
-  case TOK_LBRACK: // inline-array
-    return parse_inline_array(pp, tok, ret);
-  case TOK_LBRACE: // inline-table
-    return parse_inline_table(pp, tok, ret);
-  default:
+    rc = token_to_timestamp(pp, tok, ret);
     break;
+  case TOK_INTEGER:
+    rc = token_to_int64(pp, tok, ret);
+    break;
+  case TOK_FLOAT:
+    rc = token_to_fp64(pp, tok, ret);
+    break;
+  case TOK_BOOL:
+    rc = token_to_boolean(pp, tok, ret);
+    break;
+  case TOK_LBRACK: // inline-array
+    rc = parse_inline_array(pp, tok, ret);
+    break;
+  case TOK_LBRACE: // inline-table
+    rc = parse_inline_table(pp, tok, ret);
+    break;
+  default:
+    return SETERROR(pp->ebuf, tok.lineno, "missing value");
   }
-  return SETERROR(pp->ebuf, tok.lineno, "missing value");
+  if (rc == 0) {
+    ret->lineno = tok.lineno;
+    ret->colno = tok.colno;
+  }
+  return rc;
 }
 
 // Parse a standard table expression, and set the curtab of the parser
@@ -1300,6 +1320,7 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
 
   // Extract the keypart[]
   int keylineno = tok.lineno;
+  int keycolno = tok.colno;
   keypart_t keypart;
   DO(parse_key(pp, tok, &keypart));
 
@@ -1329,6 +1350,8 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
     const char *reason;
     toml_datum_t newtab = mkdatum(TOML_TABLE);
     newtab.flag |= FLAG_STDEXPR;
+    newtab.lineno = keylineno;
+    newtab.colno = keycolno;
     if (tab_add(tab, lastkeypart, newtab, &reason)) {
       return SETERROR(pp->ebuf, keylineno, "%s", reason);
     }
@@ -1362,6 +1385,8 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
 
   // Set explicit flag on tab
   tab->flag |= FLAG_EXPLICIT;
+  tab->lineno = keylineno;
+  tab->colno = keycolno;
 
   // Set tab as curtab of the parser
   pp->curtab = tab;
@@ -1379,6 +1404,7 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   DO(scan_key(&pp->scanner, &tok));
 
   int keylineno = tok.lineno;
+  int keycolno = tok.colno;
   keypart_t keypart;
   DO(parse_key(pp, tok, &keypart));
 
@@ -1403,6 +1429,8 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
       const char *reason;
       toml_datum_t newtab = mkdatum(TOML_TABLE);
       newtab.flag |= FLAG_STDEXPR;
+      newtab.lineno = keylineno;
+      newtab.colno = keycolno;
       if (tab_add(tab, curkey, newtab, &reason)) {
         return SETERROR(pp->ebuf, keylineno, "%s", reason);
       }
@@ -1449,7 +1477,10 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   int idx = tab_find(tab, lastkeypart);
   if (idx == -1) {
     // If not found, add an array of table.
-    if (tab_add(tab, lastkeypart, mkdatum(TOML_ARRAY), &reason)) {
+    toml_datum_t newarr = mkdatum(TOML_ARRAY);
+    newarr.lineno = keylineno;
+    newarr.colno = keycolno;
+    if (tab_add(tab, lastkeypart, newarr, &reason)) {
       return SETERROR(pp->ebuf, keylineno, "%s", reason);
     }
     idx = tab_find(tab, lastkeypart);
@@ -1469,6 +1500,8 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
     return SETERROR(pp->ebuf, keylineno, "%s", reason);
   }
   *pelem = mkdatum(TOML_TABLE);
+  pelem->lineno = keylineno;
+  pelem->colno = keycolno;
 
   // Set the last element of this array as curtab of the parser
   pp->curtab = &arr->u.arr.elem[arr->u.arr.size - 1];
@@ -1481,6 +1514,7 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
 static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
   // Obtain the key
   int keylineno = tok.lineno;
+  int keycolno = tok.colno;
   keypart_t keypart;
   DO(parse_key(pp, tok, &keypart));
 
@@ -1502,6 +1536,8 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
             "cannot extend a previously defined table using dotted expression");
       }
       toml_datum_t newtab = mkdatum(TOML_TABLE);
+      newtab.lineno = keylineno;
+      newtab.colno = keycolno;
       if (tab_add(tab, keypart.span[i], newtab, &reason)) {
         return SETERROR(pp->ebuf, keylineno, "%s", reason);
       }
@@ -1712,7 +1748,10 @@ static int scan_get(scanner_t *sp) {
     }
   }
   sp->cur = p;
-  sp->lineno += (ret == '\n' ? 1 : 0);
+  if (ret == '\n') {
+    sp->lineno += 1;
+    sp->line_start = p;
+  }
   return ret;
 }
 
@@ -1760,6 +1799,7 @@ static inline token_t mktoken(scanner_t *sp, toktyp_t typ) {
   tok.toktyp = typ;
   tok.str.ptr = sp->cur;
   tok.lineno = sp->lineno;
+  tok.colno = (int)(sp->cur - sp->line_start) + 1;
   return tok;
 }
 
@@ -1788,6 +1828,7 @@ static void scan_init(scanner_t *sp, const char *src, int len, char *errbuf,
   assert(*sp->endp == '\0');
   sp->cur = src;
   sp->lineno = 1;
+  sp->line_start = src;
   sp->ebuf.ptr = errbuf;
   sp->ebuf.len = errbufsz;
 }
@@ -2591,6 +2632,7 @@ static scanner_state_t scan_mark(scanner_t *sp) {
   mark.sp = sp;
   mark.cur = sp->cur;
   mark.lineno = sp->lineno;
+  mark.line_start = sp->line_start;
   return mark;
 }
 
@@ -2599,6 +2641,7 @@ static void scan_restore(scanner_t *sp, scanner_state_t mark) {
   assert(mark.sp == sp);
   sp->cur = mark.cur;
   sp->lineno = mark.lineno;
+  sp->line_start = mark.line_start;
 }
 
 // Return the next token
