@@ -10,9 +10,7 @@ TOML v1.1 in c17.
 
 ## Usage
 
-See
-[tomlc17.h](https://github.com/cktan/tomlc17/blob/main/src/tomlc17.h)
-for details.
+See [API.md](API.md) for the full API reference.
 
 Parsing a toml document creates a tree data structure in memory that
 reflects the document. Information can be extracted by navigating this
