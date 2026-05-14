@@ -1551,7 +1551,7 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
 
 // Normalize a LIT/STRING/MLSTRING/LITSTRING/MLLITSTRING
 // -> unescape all escaped chars
-// The returned string is allocated out of pp->sbuf[]
+// The returned string is allocated out of pp->pool
 static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
   // Allocate a buffer to store the normalized string. Add one
   // extra-byte for terminating NUL.

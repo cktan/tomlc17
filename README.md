@@ -34,6 +34,7 @@ The following is a simple example:
  */
 #include "../src/tomlc17.h"
 #include <errno.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -71,7 +72,7 @@ int main() {
     if (elem.type != TOML_INT64) {
       error("server.port element not an integer", 0);
     }
-    printf("%s%d", i ? ", " : "", (int)elem.u.int64);
+    printf("%s%" PRId64, i ? ", " : "", elem.u.int64);
   }
   printf("]\n");
 

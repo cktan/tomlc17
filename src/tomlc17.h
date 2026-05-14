@@ -48,7 +48,7 @@ struct toml_datum_t {
   toml_type_t type;
   uint32_t flag; // internal
   union {
-    const char *s; // same as str.ptr; use if there are no NUL in string.
+    const char *s; // shorthand for str.ptr
     struct {
       const char *ptr; // NUL terminated string
       int len;         // length excluding the terminating NUL.
@@ -123,7 +123,7 @@ TOML_EXTERN toml_datum_t toml_get(toml_datum_t table, const char *key);
  * found, or a TOML_UNKNOWN otherwise.
  *
  * Note: the multipart-key is separated by DOT, and must not have any escape
- * chars. The maximum length of the multipart_key must not exceed 127 bytes.
+ * chars. The maximum length of the multipart_key must not exceed 255 bytes.
  */
 TOML_EXTERN toml_datum_t toml_seek(toml_datum_t table,
                                    const char *multipart_key);
