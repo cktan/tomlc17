@@ -285,10 +285,11 @@ literal; do not free it.
 | Build mode | Example value |
 |------------|---------------|
 | Debug (`DEBUG=1`) | `"debug"` |
-| Release, tagged   | `"R20260514"` |
-| Release, untagged | `"d3544ab"` (short git commit id) |
+| Release, HEAD is tagged   | `"R20260514"` (the tag name) |
+| Release, HEAD is untagged | `"d3544ab"` (short git commit id) |
 
-To produce a tagged release build:
+The tag name is detected automatically via `git describe --exact-match --tags HEAD`.
+To override, pass `TOML_VERSION_STRING` explicitly:
 
 ```bash
 make TOML_VERSION_STRING=R20260514

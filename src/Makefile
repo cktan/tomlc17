@@ -12,7 +12,7 @@ ifdef DEBUG
     CFLAGS += -O0 -g -fsanitize=address,undefined
 else
     CFLAGS += -O3 -DNDEBUG
-    TOML_VERSION_STRING ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+    TOML_VERSION_STRING ?= $(shell git describe --exact-match --tags HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo unknown)
     CFLAGS += -DTOML_VERSION_STRING='"$(TOML_VERSION_STRING)"'
 endif
 
