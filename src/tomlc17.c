@@ -2925,3 +2925,11 @@ static int ucs_to_utf8(uint32_t code, char buf[4]) {
 
   return -1;
 }
+
+const char *toml_version(void) {
+#ifndef NDEBUG
+  return "debug";
+#else
+  return TOML_VERSION_STRING;
+#endif
+}

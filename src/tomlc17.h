@@ -187,4 +187,10 @@ TOML_EXTERN toml_option_t toml_default_option(void);
  */
 TOML_EXTERN void toml_set_option(toml_option_t opt);
 
+/**
+ * Return the version string. In debug builds: "debug". In release builds:
+ * "Ryyyymmdd" for tagged releases, or the short git commit id.
+ */
+TOML_EXTERN const char *toml_version(void);
+
 #endif // TOMLC17_H
