@@ -257,7 +257,7 @@ static int tab_find(toml_datum_t *tab, span_t key) {
   return -1;
 }
 
-// Put key into tab dictionary. Return a place to
+// Put key into tab dictionary. Return a pointer to
 // the datum for the key on success, or NULL otherwise.
 static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
                                  const char **reason) {
@@ -1369,7 +1369,7 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
 }
 
 // Parse an array table expression, and set the curtab of the parser
-// to the table referenced. A standard array table expresison is a line
+// to the table referenced. A standard array table expression is a line
 // like [[a.b.c.d]].
 static int parse_array_table_expr(parser_t *pp, token_t tok) {
   // array-table = [[ key ]]
@@ -2379,7 +2379,7 @@ static int process_numstr(char *buffer, int base, const char **reason) {
 }
 
 static int scan_float(scanner_t *sp, token_t *tok) {
-  char buffer[50]; // need to accomodate "9_007_199_254_740_991.0"
+  char buffer[50]; // need to accommodate "9_007_199_254_740_991.0"
   scan_copystr(sp, buffer, sizeof(buffer));
 
   int lineno = sp->lineno;
@@ -2414,7 +2414,7 @@ static int scan_float(scanner_t *sp, token_t *tok) {
 
 static int scan_number(scanner_t *sp, token_t *tok) {
   const char *reason;
-  char buffer[50]; // need to accomodate "9_007_199_254_740_991.0"
+  char buffer[50]; // need to accommodate "9_007_199_254_740_991.0"
   scan_copystr(sp, buffer, sizeof(buffer));
 
   char *p = buffer;

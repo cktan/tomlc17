@@ -131,7 +131,7 @@ TOML_EXTERN toml_datum_t toml_seek(toml_datum_t table,
 /**
  * OBSOLETE: use toml_get() instead.
  * Find a key in a toml_table. Return the value of the key if found,
- * or a TOML_UNKNOWN otherwise. (
+ * or a TOML_UNKNOWN otherwise.
  */
 static inline toml_datum_t toml_table_find(toml_datum_t table,
                                            const char *key) {
