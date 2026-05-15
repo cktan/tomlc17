@@ -8,19 +8,11 @@ LIB := libtomlc17.a
 LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
 EXEC =
 
-TOML_GIT_TAG := $(shell git describe --exact-match --tags HEAD 2>/dev/null | grep -E '^R[0-9]{8}$$')
-TOML_GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-
 ifdef DEBUG
     CFLAGS += -O0 -g -fsanitize=address,undefined
 else
     CFLAGS += -O3 -DNDEBUG
 endif
-
-ifneq ($(TOML_GIT_TAG),)
-    CFLAGS += -DTOML_GIT_TAG='"$(TOML_GIT_TAG)"'
-endif
-CFLAGS += -DTOML_GIT_HASH='"$(TOML_GIT_HASH)"'
 
 all: $(EXEC) $(LIB) $(LIB_SHARED) 
 

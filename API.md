@@ -271,32 +271,6 @@ toml_set_option(opt);
 
 ---
 
-## Version
-
-### `toml_version`
-
-```c
-const char *toml_version(void);
-```
-
-Return a NUL-terminated version string. The returned pointer is a string
-literal; do not free it.
-
-| Build mode | Example value |
-|------------|---------------|
-| Debug (`DEBUG=1`) | `"debug"` |
-| Release, HEAD is tagged   | `"R20260514"` (the tag name) |
-| Release, HEAD is untagged | `"d3544ab"` (short git commit id) |
-
-The tag name is detected automatically via `git describe --exact-match --tags HEAD`.
-To override, pass `TOML_VERSION_STRING` explicitly:
-
-```bash
-make TOML_VERSION_STRING=R20260514
-```
-
----
-
 ## Deprecated
 
 ### `toml_table_find`
