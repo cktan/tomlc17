@@ -2927,9 +2927,11 @@ static int ucs_to_utf8(uint32_t code, char buf[4]) {
 }
 
 const char *toml_version(void) {
-#ifndef NDEBUG
+#ifdef TOML_GIT_TAG
+  return TOML_GIT_TAG;
+#elif !defined(NDEBUG)
   return "debug";
 #else
-  return TOML_VERSION_STRING;
+  return TOML_GIT_HASH;
 #endif
 }
