@@ -1555,6 +1555,9 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
 static int parse_norm(parser_t *pp, token_t tok, span_t *ret_span) {
   // Allocate a buffer to store the normalized string. Add one
   // extra-byte for terminating NUL.
+  if (tok.str.len < 0) {
+    return SETERROR(pp->ebuf, tok.lineno, "invalid string length");
+  }
   char *p = pool_alloc(pp->pool, tok.str.len + 1);
   if (!p) {
     return SETERROR(pp->ebuf, tok.lineno, "out of memory");
