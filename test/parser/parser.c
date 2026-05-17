@@ -177,8 +177,24 @@ static int indent() {
   return 0;
 }
 
+static const char* fmt_double(double f, char* buf, int buflen) {
+  snprintf(buf, buflen, "%.16g", f);
+  if (!strchr(buf, 'e') &&
+      !strchr(buf, '.') &&
+      !strchr(buf, 'n')) {
+    // add a .0 if the number is an int, and not inf or nan.
+    snprintf(buf, buflen, "%.16g%s", f, ".0");
+  }
+  if (isnan(f) && signbit(f)) {
+    snprintf(buf, buflen, "%s", "-nan");
+  }
+  return buf;
+}
+
 // Print datum tree recursively
 static void print_datum(toml_datum_t datum) {
+  char buf[50];
+  
   switch (datum.type) {
   case TOML_STRING:
     print_string(datum.u.str.ptr, datum.u.str.len);
@@ -188,8 +204,8 @@ static void print_datum(toml_datum_t datum) {
            datum.u.int64);
     break;
   case TOML_FP64:
-    printf("{\"type\": \"float\", \"value\": \"%.16g%s\"}", datum.u.fp64,
-           (datum.u.fp64 - (int64_t)datum.u.fp64 == 0) ? ".0" : "");
+    printf("{\"type\": \"float\", \"value\": \"%s\"}",
+	   fmt_double(datum.u.fp64, buf, sizeof(buf)));
     break;
   case TOML_BOOLEAN:
     printf("{\"type\": \"bool\", \"value\": \"%s\"}",
