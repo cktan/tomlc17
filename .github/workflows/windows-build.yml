@@ -37,7 +37,7 @@ jobs:
         cache: false
     
     - name: Install toml-test
-      run: go install github.com/toml-lang/toml-test/v2/cmd/toml-test@latest
+      run: go install github.com/toml-lang/toml-test/cmd/toml-test@latest
     
     - name: Build
       shell: cmd
