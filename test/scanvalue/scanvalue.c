@@ -57,7 +57,7 @@ static void printtok(char *content, const token_t tok) {
     break;
   case TOK_FLOAT:
     printf(" %.16g%s", tok.u.fp64,
-           (tok.u.fp64 - (int64_t)tok.u.fp64 == 0) ? ".0" : "");
+	   (fmod(tok.u.fp64, 1.0) == 0.0) ? ".0" : "");
     break;
   case TOK_BOOL:
     printf(" %s", tok.u.b1 ? "true" : "false");
