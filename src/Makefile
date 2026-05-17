@@ -11,12 +11,13 @@ ifeq ($(UNAME), Darwin)
 else ifeq ( $(UNAME), Windows)
     LIB_SHARED =
 else
+    $(info UNAME $(UNAME))
     LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
 endif
 EXEC =
 
 # set up CFLAGS / CXXFLAGS
-CFLAGS := -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD
+CFLAGS := -std=c17 -Wmissing-declarations -Wall -Wextra -MMD
 
 ifdef DEBUG
     CFLAGS += -O0 -g -fsanitize=address,undefined
@@ -25,6 +26,7 @@ else
 endif
 # Add -fpic only for non-Windows platforms
 ifneq ($(UNAME), Windows)
+    $(info UNAME $(UNAME))
     CFLAGS += -fpic
 endif
 
