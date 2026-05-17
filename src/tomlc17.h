@@ -4,6 +4,9 @@
 #ifndef TOMLC17_H
 #define TOMLC17_H
 
+// A crude way to determine version. Manually changed.
+#define TOMLC17_RELEASE_AFTER "260517"
+
 /*
  *  USAGE:
  *
