@@ -11,7 +11,7 @@ env:
   DEBUG: "1"
   
 jobs:
-  build:
+  build-ubuntu:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,3 +27,19 @@ jobs:
       run: make test
     - name: make install
       run: make install prefix=./tmp
+
+
+  build-macos:
+    runs-on: macos-latest
+  
+    steps:
+    - uses: actions/checkout@v4
+    - name: install toml-test
+      run: go install github.com/toml-lang/toml-test/v2/cmd/toml-test@latest
+    - name: make clean all
+      run: make clean all
+    - name: make test
+      run: make test
+    - name: make install
+      run: make install prefix=./tmp
+
