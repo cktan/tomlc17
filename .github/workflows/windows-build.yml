@@ -1,0 +1,58 @@
+name: Windows Build and Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  DEBUG: "1"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        include:
+          - { cc: gcc, cxx: g++ }
+          - { cc: clang, cxx: clang++ }
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install MinGW and tools
+      run: |
+        choco install mingw make -y
+        refreshenv
+    
+    - name: Install LLVM (for clang build)
+      if: matrix.cc == 'clang'
+      run: choco install llvm -y
+    
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        cache: false
+    
+    - name: Install toml-test
+      run: go install github.com/toml-lang/toml-test/v2/cmd/toml-test@latest
+    
+    - name: Build
+      shell: cmd
+      env:
+        CC: ${{ matrix.cc }}
+        CXX: ${{ matrix.cxx }}
+      run: |
+        make clean all
+    
+    - name: Run tests
+      shell: cmd
+      run: |
+        make test
+    
+    - name: Install to temp directory
+      shell: cmd
+      run: |
+        make install prefix=.\tmp
