@@ -1,10 +1,17 @@
-CFLAGS = -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
-EXEC = simple simplecpp 
+EXEC = simple simplecpp
+
+# set up CFLAGS / CXXFLAGS
+CFLAGS = -std=c17 -Wmissing-declarations -Wall -Wextra -MMD 
 
 ifdef DEBUG
     CFLAGS += -O0 -g -fsanitize=address,undefined
 else
     CFLAGS += -O3 -DNDEBUG
+endif
+# Add -fpic only for non-Windows platforms
+UNAME := $(shell uname)
+ifneq ($(UNAME), Windows)
+    CFLAGS += -fpic
 endif
 
 CXXFLAGS = $(subst -std=c17,-std=c++20,$(CFLAGS))

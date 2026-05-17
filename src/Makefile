@@ -2,22 +2,32 @@ HFILES := tomlc17.h
 CFILES := tomlc17.c
 OBJ := $(CFILES:.c=.o)
 
-CFLAGS := -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD
+# set up LIB_SHARED
 LIB_VERSION := 1.0
 LIB := libtomlc17.a
 UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
+    LIB_SHARED =
+else if ( $(UNAME), Windows)
     LIB_SHARED =
 else
     LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
 endif
 EXEC =
 
+# set up CFLAGS / CXXFLAGS
+CFLAGS := -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD
+
 ifdef DEBUG
     CFLAGS += -O0 -g -fsanitize=address,undefined
 else
     CFLAGS += -O3 -DNDEBUG
 endif
+# Add -fpic only for non-Windows platforms
+ifneq ($(UNAME), Windows)
+    CFLAGS += -fpic
+endif
+
 
 all: $(EXEC) $(LIB) $(LIB_SHARED) 
 

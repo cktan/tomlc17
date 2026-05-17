@@ -1,4 +1,4 @@
-CFLAGS = -std=c17 -fsanitize=address,undefined -fpic -Wmissing-declarations -Wall -Wextra -MMD
+CFLAGS = -std=c17 -fsanitize=address,undefined -Wmissing-declarations -Wall -Wextra -MMD
 EXEC = test1
 
 ifdef DEBUG
