@@ -9,8 +9,7 @@ else
     CFLAGS += -O3 -DNDEBUG
 endif
 # Add -fpic only for non-Windows platforms
-UNAME := $(shell uname)
-ifneq ($(UNAME), Windows)
+ifneq ($(OS), Windows_NT)
     CFLAGS += -fpic
 endif
 

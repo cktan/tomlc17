@@ -8,10 +8,9 @@ LIB := libtomlc17.a
 UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
     LIB_SHARED =
-else ifeq ( $(UNAME), Windows)
+else ifeq ($(OS), Windows_NT)
     LIB_SHARED =
 else
-    $(info UNAME $(UNAME))
     LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
 endif
 EXEC =
@@ -25,8 +24,7 @@ else
     CFLAGS += -O3 -DNDEBUG
 endif
 # Add -fpic only for non-Windows platforms
-ifneq ($(UNAME), Windows)
-    $(info UNAME $(UNAME))
+ifneq ($(OS), Windows_NT)
     CFLAGS += -fpic
 endif
 
