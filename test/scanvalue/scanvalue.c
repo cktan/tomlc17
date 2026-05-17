@@ -17,6 +17,17 @@ static void printspecial(const char *p, int n) {
   }
 }
 
+static const char* fmt_double(double f, char* buf, int buflen) {
+  snprintf(buf, buflen, "%.16g", f);
+  if (!strchr(buf, 'e') &&
+      !strchr(buf, '.') &&
+      !strchr(buf, 'n')) {
+    // add a .0 if the number is an int, and not inf or nan.
+    snprintf(buf, buflen, "%.16g%s", f, ".0");
+  }
+  return buf;
+}
+
 static void printtok(char *content, const token_t tok) {
   // clang-format off
 #define CASESTR(x) case TOK_ ## x: s = #x; break
@@ -51,13 +62,13 @@ static void printtok(char *content, const token_t tok) {
   printf("%s %ld %d ", s, tok.str.ptr - content, tok.str.len);
   printspecial(tok.str.ptr, tok.str.len);
 
+  char buf[50];
   switch (tok.toktyp) {
   case TOK_INTEGER:
     printf(" %" PRId64, tok.u.int64);
     break;
   case TOK_FLOAT:
-    printf(" %.16g%s", tok.u.fp64,
-	   (fmod(tok.u.fp64, 1.0) == 0.0) ? ".0" : "");
+    printf(" %s", fmt_double(tok.u.fp64, buf, sizeof(buf)));
     break;
   case TOK_BOOL:
     printf(" %s", tok.u.b1 ? "true" : "false");

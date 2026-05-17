@@ -3,7 +3,7 @@ CFLAGS := -O0 -g -fsanitize=address,undefined -std=c17 -fpic -Wmissing-declarati
 all: driver
 
 driver: scanvalue.c
-	$(CC) $(CFLAGS) -o $@ scanvalue.c
+	$(CC) $(CFLAGS) -o $@ scanvalue.c -lm
 
 test: all
 	bash run.sh
