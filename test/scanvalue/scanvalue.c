@@ -25,6 +25,9 @@ static const char* fmt_double(double f, char* buf, int buflen) {
     // add a .0 if the number is an int, and not inf or nan.
     snprintf(buf, buflen, "%.16g%s", f, ".0");
   }
+  if (isnan(f) && signbit(f)) {
+    snprintf(buf, buflen, "%s", "-nan");
+  }
   return buf;
 }
 
