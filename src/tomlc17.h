@@ -47,6 +47,8 @@ typedef struct toml_datum_t toml_datum_t;
 struct toml_datum_t {
   toml_type_t type;
   uint32_t flag; // internal
+  int lineno;    // 1-based source line, 0 when synthesized
+  int colno;     // 1-based source column, 0 when synthesized
   union {
     const char *s; // shorthand for str.ptr
     struct {
