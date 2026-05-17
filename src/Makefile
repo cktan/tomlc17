@@ -8,7 +8,7 @@ LIB := libtomlc17.a
 UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
     LIB_SHARED =
-else if ( $(UNAME), Windows)
+else ifeq ( $(UNAME), Windows)
     LIB_SHARED =
 else
     LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
