@@ -39,10 +39,6 @@ static void print_string(const char *s, int len) {
       putchar('\\');
       putchar('r');
       break; // Escape carriage return
-    case '\e':
-      putchar('\\');
-      putchar('e');
-      break; // Escape escape
     case '"':
       putchar('\\');
       putchar('"');
