@@ -5,7 +5,12 @@ OBJ := $(CFILES:.c=.o)
 CFLAGS := -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD
 LIB_VERSION := 1.0
 LIB := libtomlc17.a
-LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
+UNAME := $(shell uname)
+ifeq ($(UNAME), Darwin)
+    LIB_SHARED =
+else
+    LIB_SHARED = libtomlc17.so.$(LIB_VERSION)
+endif
 EXEC =
 
 ifdef DEBUG
