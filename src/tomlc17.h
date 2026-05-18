@@ -72,7 +72,7 @@ struct toml_datum_t {
     const char *s; /**< Shorthand for str.ptr */
     struct {
       const char *ptr; /**< NUL terminated string pointer */
-      int len;         /**< Length of the string excluding the terminating NUL */
+      int len; /**< Length of the string excluding the terminating NUL */
     } str;
     int64_t int64; /**< 64-bit integer value */
     double fp64;   /**< 64-bit floating point value */
@@ -122,7 +122,8 @@ TOML_EXTERN toml_result_t toml_parse(const char *src, int len);
 /**
  * @brief Parse a TOML document from a file pointer.
  *
- * @param fp A pointer to the open file. The caller is responsible for closing it.
+ * @param fp A pointer to the open file. The caller is responsible for closing
+ * it.
  * @return A toml_result_t structure. Must be freed with toml_free().
  *
  * IMPORTANT: you are still responsible to fclose(fp).
@@ -149,7 +150,8 @@ TOML_EXTERN void toml_free(toml_result_t result);
  *
  * @param table The TOML table to search in.
  * @param key The key to look for.
- * @return The value associated with the key, or a datum with type TOML_UNKNOWN if not found.
+ * @return The value associated with the key, or a datum with type TOML_UNKNOWN
+ * if not found.
  */
 TOML_EXTERN toml_datum_t toml_get(toml_datum_t table, const char *key);
 
@@ -157,8 +159,8 @@ TOML_EXTERN toml_datum_t toml_get(toml_datum_t table, const char *key);
  * @brief Locate a value using a multipart-key (e.g., "a.b.c").
  *
  * @param table The TOML table to start the search from.
- * @param multipart_key A dot-separated key string. No escape characters allowed.
- *                      Maximum length is 255 bytes.
+ * @param multipart_key A dot-separated key string. No escape characters
+ * allowed. Maximum length is 255 bytes.
  * @return The value found, or a datum with type TOML_UNKNOWN if not found.
  */
 TOML_EXTERN toml_datum_t toml_seek(toml_datum_t table,
@@ -187,12 +189,12 @@ static inline toml_datum_t toml_table_find(toml_datum_t table,
  *   ret = copy of r1
  *   for each item x in r2:
  *     if x is not in ret:
- *          override
+ *         set x in ret
  *     elif x in ret is NOT of the same type:
  *         override
- *     elif x is an array of tables:
+ *     elif x in ret is an array of tables:
  *         append r2.x to ret.x
- *     elif x is a table:
+ *     elif x in ret is a table:
  *         merge r2.x to ret.x
  *     else:
  *         override
@@ -216,9 +218,12 @@ TOML_EXTERN bool toml_equiv(const toml_result_t *r1, const toml_result_t *r2);
  */
 typedef struct toml_option_t toml_option_t;
 struct toml_option_t {
-  bool check_utf8; /**< If true, check if all characters are valid UTF-8. Default: false. */
-  void *(*mem_realloc)(void *ptr, size_t size); /**< Custom realloc function. Default: realloc(). */
-  void (*mem_free)(void *ptr);                  /**< Custom free function. Default: free(). */
+  bool check_utf8; /**< If true, check if all characters are valid UTF-8.
+                      Default: false. */
+  void *(*mem_realloc)(
+      void *ptr,
+      size_t size); /**< Custom realloc function. Default: realloc(). */
+  void (*mem_free)(void *ptr); /**< Custom free function. Default: free(). */
 };
 
 /**

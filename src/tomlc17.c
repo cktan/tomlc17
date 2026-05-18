@@ -209,8 +209,8 @@ struct scanner_t {
   const char *cur;  // current char in src[]
   int lineno;       // line number of current char
   const char *line_start;
-  char *errmsg;     // set to ebuf.ptr if there was an error
-  ebuf_t ebuf;      // buffer to store error message
+  char *errmsg; // set to ebuf.ptr if there was an error
+  ebuf_t ebuf;  // buffer to store error message
 
   int bracket_level; // count depth of [ ]
   int brace_level;   // count depth of { }

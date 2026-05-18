@@ -17,11 +17,9 @@ static void printspecial(const char *p, int n) {
   }
 }
 
-static const char* fmt_double(double f, char* buf, int buflen) {
+static const char *fmt_double(double f, char *buf, int buflen) {
   snprintf(buf, buflen, "%.16g", f);
-  if (!strchr(buf, 'e') &&
-      !strchr(buf, '.') &&
-      !strchr(buf, 'n')) {
+  if (!strchr(buf, 'e') && !strchr(buf, '.') && !strchr(buf, 'n')) {
     // add a .0 if the number is an int, and not inf or nan.
     snprintf(buf, buflen, "%.16g%s", f, ".0");
   }
