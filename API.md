@@ -53,6 +53,9 @@ A node in the parsed document tree.
 ```c
 struct toml_datum_t {
   toml_type_t type;
+  uint32_t    flag;   // internal
+  int         lineno; // 1-based source line, 0 when synthesized
+  int         colno;  // 1-based source column, 0 when synthesized
   union {
     const char *s;           // TOML_STRING: shorthand for str.ptr
     struct {
@@ -82,6 +85,14 @@ struct toml_datum_t {
 };
 ```
 
+**Fields:**
+
+- `type`: The type of this datum (see `toml_type_t`).
+- `flag`: Internal use only. Do not read or modify.
+- `lineno`: 1-based line number in the source document where this value appeared. Set to 0 for synthesized values.
+- `colno`: 1-based column number in the source document where this value appeared. Set to 0 for synthesized values.
+- `u`: Union containing the actual value based on the `type`.
+
 **Accessing values by type:**
 
 | `type`           | field(s) to read                         |
@@ -108,6 +119,7 @@ struct toml_result_t {
   bool         ok;          // true on success
   toml_datum_t toptab;      // the top-level table; valid when ok == true
   char         errmsg[200]; // error description; valid when ok == false
+  void        *__internal;  // internal use only; do not access
 };
 ```
 
