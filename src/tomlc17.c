@@ -2172,6 +2172,7 @@ static int read_time(const char *p, int *hour, int *minute, int *second,
     micro_factor /= 10;
     p++;
   }
+  while (isdigit(*p)) p++; // consume extra sub-microsecond digits
   return p - pp;
 }
 
