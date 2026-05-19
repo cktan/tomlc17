@@ -2596,12 +2596,45 @@ static int scan_nonstring_literal(scanner_t *sp, token_t *tok) {
   return SETERROR(sp->ebuf, lineno, "invalid value");
 }
 
+// Return true if Unicode codepoint is allowed in a TOML 1.1 bare key.
+// Ranges taken verbatim from the TOML 1.1 spec grammar for bare-key-char.
+static bool is_unicode_bare_key_char(uint32_t cp) {
+  if (cp == 0xB2 || cp == 0xB3 || cp == 0xB9) return true;
+  if (0xBC <= cp && cp <= 0xBE) return true;
+  if (0xC0 <= cp && cp <= 0xD6) return true;
+  if (0xD8 <= cp && cp <= 0xF6) return true;
+  if (0xF8 <= cp && cp <= 0x37D) return true;
+  if (0x37F <= cp && cp <= 0x1FFF) return true;
+  if (cp == 0x200C || cp == 0x200D) return true;
+  if (0x203F <= cp && cp <= 0x2040) return true;
+  if (0x2070 <= cp && cp <= 0x218F) return true;
+  if (0x2460 <= cp && cp <= 0x24FF) return true;
+  if (0x2C00 <= cp && cp <= 0x2FEF) return true;
+  if (0x3001 <= cp && cp <= 0xD7FF) return true;
+  if (0xF900 <= cp && cp <= 0xFDCF) return true;
+  if (0xFDF0 <= cp && cp <= 0xFFFD) return true;
+  if (0x10000 <= cp && cp <= 0xEFFFF) return true;
+  return false;
+}
+
 // Scan a literal
 static int scan_literal(scanner_t *sp, token_t *tok) {
   *tok = mktoken(sp, TOK_LIT);
   const char *p = sp->cur;
-  while (p < sp->endp && (isalnum(*p) || *p == '_' || *p == '-')) {
-    p++;
+  while (p < sp->endp) {
+    if (isalnum((unsigned char)*p) || *p == '_' || *p == '-') {
+      p++;
+      continue;
+    }
+    if ((unsigned char)*p >= 0x80) {
+      uint32_t cp;
+      int n = utf8_to_ucs(p, sp->endp - p, &cp);
+      if (n > 0 && is_unicode_bare_key_char(cp)) {
+        p += n;
+        continue;
+      }
+    }
+    break;
   }
   tok->str.len = p - tok->str.ptr;
   sp->cur = p;
