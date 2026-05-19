@@ -2,3 +2,6 @@
 *.o
 *.d
 *.a
+*.swp
+a.out
+t

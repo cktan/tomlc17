@@ -48,19 +48,13 @@ TOML 1.1 allows any non-ASCII Unicode codepoint (U+00B2 and up) in bare keys. `c
 
 ### 3. Stray scratch files at repo root
 
-`t.c`, `t.c~`, `a.out`, `API.md~` are sitting in the working tree (untracked per `git status`). `t.c` is a float-printing experiment; `t` / `a.out` are compiled binaries. These should be deleted and the root `.gitignore` should cover `*.c~`, `a.out`, and bare executables like `t`.
+**FIXED** — Deleted `t.c`, `t`, `a.out` and updated `.gitignore`.
 
 ---
 
 ### 4. `toml_parse(NULL, n)` crashes
 
-**`src/tomlc17.c:796`**
-
-```c
-if (src[len]) {   // UB / crash if src == NULL
-```
-
-No null guard on `src`. The API doc says it must be NUL-terminated, but a null pointer produces a segfault rather than an error result. A `if (!src) { snprintf(..., "src is NULL"); goto bail; }` would be safer.
+**FIXED** — Added NULL guard for `src` in `toml_parse`.
 
 ---
 

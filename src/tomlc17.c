@@ -792,6 +792,12 @@ toml_result_t toml_parse(const char *src, int len) {
   parser_t parser = {0};
   parser_t *pp = &parser;
 
+  // Check that src is not NULL.
+  if (!src) {
+    snprintf(result.errmsg, sizeof(result.errmsg), "src is NULL");
+    goto bail;
+  }
+
   // Check that src is NUL terminated.
   if (src[len]) {
     snprintf(result.errmsg, sizeof(result.errmsg),
