@@ -260,8 +260,14 @@ static int tab_find(toml_datum_t *tab, span_t key) {
   return -1;
 }
 
-// Put key into tab dictionary. Return a pointer to
-// the datum for the key on success, or NULL otherwise.
+// Put key into tab dictionary. Return a pointer to the datum for the key.
+// If the key already exists, returns a pointer to its existing datum (the
+// datum is NOT zeroed — callers must check datum->type to detect duplicates).
+// If the key is new, appends it with a zero datum and returns a pointer to it.
+// Returns NULL on allocation failure.
+//
+// Dual-use: tab_add() uses the non-zero type to detect and reject duplicates;
+// datum_copy/datum_merge() use it to locate or create a slot for writing.
 static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
                                  const char **reason) {
   assert(tab->type == TOML_TABLE);
