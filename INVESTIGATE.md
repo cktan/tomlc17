@@ -8,19 +8,6 @@ A TOML 1.1 parser in C17. One implementation file (`tomlc17.c`, ~2950 lines), a 
 
 ## Confirmed Bugs
 
-
-### 6. `parse_array_table_expr` duplicates descent logic
-
-**`src/tomlc17.c:1412–1460`**
-
-The intermediate-key descent in `parse_array_table_expr` is a hand-rolled copy of `descend_keypart` rather than a call to it. The two code paths handle the same invariants and can diverge silently. Refactoring the array table path to use `descend_keypart` would reduce maintenance surface.
-
----
-
-### 7. `tab_emplace` has dual-purpose return semantics
-
-**FIXED** — Added comment to `tab_emplace` explaining that it returns existing datums unmodified and that callers must check `datum->type` to detect duplicates vs. fresh slots.
-
 ---
 
 ## Code Quality Observations
@@ -36,11 +23,3 @@ The intermediate-key descent in `parse_array_table_expr` is a hand-rolled copy o
 
 ## Priority Summary
 
-| # | Severity | Issue |
-|---|----------|-------|
-| 1 | **High** | Sub-second precision >6 digits breaks parse |
-| 2 | **Medium** | Unicode bare keys rejected (TOML 1.1 gap) |
-| 3 | Low | Stray scratch files in working tree |
-| 4 | Low | No null guard on `toml_parse` `src` parameter |
-| 5 | Low | Three-REALLOC pattern in `tab_emplace` |
-| 6 | Low | Array table descent code duplicated |
