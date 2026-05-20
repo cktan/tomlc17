@@ -1420,62 +1420,19 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   assert(keypart.nspan > 0);
   span_t lastkeypart = keypart.span[--keypart.nspan];
 
-  // descend the key from the toptab
-  toml_datum_t *tab = &pp->toptab;
-  for (int i = 0; i < keypart.nspan; i++) {
-    span_t curkey = keypart.span[i];
-    int j = tab_find(tab, curkey);
-    if (j < 0) {
-      // If not found: add a new (key,tab) pair
-      const char *reason;
-      toml_datum_t newtab = mkdatum_at(TOML_TABLE, keylineno, keycolno);
-      newtab.flag |= FLAG_STDEXPR;
-      if (tab_add(tab, curkey, newtab, &reason)) {
-        return SETERROR(pp->ebuf, keylineno, "%s", reason);
-      }
-      tab = &tab->u.tab.value[tab->u.tab.size - 1];
-      continue;
-    }
-
-    // Found: get the value
-    toml_datum_t *value = &tab->u.tab.value[j];
-
-    // If value is table, then point to that table and continue descent.
-    if (value->type == TOML_TABLE) {
-      tab = value;
-      continue;
-    }
-
-    // If value is an array of table, point to the last element of the array and
-    // continue descent.
-    if (value->type == TOML_ARRAY) {
-      if (value->flag & FLAG_INLINED) {
-        return SETERROR(pp->ebuf, keylineno, "cannot expand array %s",
-                        curkey.ptr);
-      }
-      if (value->u.arr.size <= 0) {
-        return SETERROR(pp->ebuf, keylineno, "array %s has no elements",
-                        curkey.ptr);
-      }
-      value = &value->u.arr.elem[value->u.arr.size - 1];
-      if (value->type != TOML_TABLE) {
-        return SETERROR(pp->ebuf, keylineno, "array %s must be array of tables",
-                        curkey.ptr);
-      }
-      tab = value;
-      continue;
-    }
-
-    // keypart not found
-    return SETERROR(pp->ebuf, keylineno, "cannot locate table at key %s",
-                    curkey.ptr);
-  }
+  // descend intermediate keys from toptab
+  toml_datum_t *tab =
+      descend_keypart(pp, keylineno, keycolno, &pp->toptab, &keypart, true);
+  if (!tab) return -1;
 
   // For the final keypart, make sure entry at key is an array of tables
   const char *reason;
   int idx = tab_find(tab, lastkeypart);
   if (idx == -1) {
     // If not found, add an array of table.
+    if (tab->flag & FLAG_INLINED) {
+      return SETERROR(pp->ebuf, keylineno, "inline table cannot be extended");
+    }
     toml_datum_t newarr = mkdatum_at(TOML_ARRAY, keylineno, keycolno);
     if (tab_add(tab, lastkeypart, newarr, &reason)) {
       return SETERROR(pp->ebuf, keylineno, "%s", reason);
