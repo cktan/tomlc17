@@ -1423,7 +1423,8 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   // descend intermediate keys from toptab
   toml_datum_t *tab =
       descend_keypart(pp, keylineno, keycolno, &pp->toptab, &keypart, true);
-  if (!tab) return -1;
+  if (!tab)
+    return -1;
 
   // For the final keypart, make sure entry at key is an array of tables
   const char *reason;
@@ -1783,6 +1784,7 @@ static void scan_init(scanner_t *sp, const char *src, int len, char *errbuf,
   sp->ebuf.len = errbufsz;
 }
 
+// Scan """ ... """
 static int scan_multiline_string(scanner_t *sp, token_t *tok) {
   assert(S_MATCH3('"'));
   S_GET(), S_GET(), S_GET(); // skip opening """
@@ -1889,6 +1891,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
   return 0;
 }
 
+// Scan " ... "
 static int scan_string(scanner_t *sp, token_t *tok) {
   assert(S_MATCH('"'));
   if (S_MATCH3('"')) {
@@ -1952,6 +1955,7 @@ static int scan_string(scanner_t *sp, token_t *tok) {
   return 0;
 }
 
+// Scan ''' ... '''
 static int scan_multiline_litstring(scanner_t *sp, token_t *tok) {
   assert(S_MATCH3('\''));
   S_GET(), S_GET(), S_GET(); // skip opening '''
@@ -1994,6 +1998,7 @@ static int scan_multiline_litstring(scanner_t *sp, token_t *tok) {
   return 0;
 }
 
+// Scan ' ... '
 static int scan_litstring(scanner_t *sp, token_t *tok) {
   assert(S_MATCH('\''));
   if (S_MATCH3('\'')) {
@@ -2141,7 +2146,8 @@ static int read_time(const char *p, int *hour, int *minute, int *second,
     micro_factor /= 10;
     p++;
   }
-  while (isdigit(*p)) p++; // consume extra sub-microsecond digits
+  while (isdigit(*p))
+    p++; // consume extra sub-microsecond digits
   return p - pp;
 }
 
@@ -2179,6 +2185,7 @@ static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
   return p - pp;
 }
 
+// Scan hh:mm:ss.xxxxx
 static int scan_time(scanner_t *sp, token_t *tok) {
   int lineno = sp->lineno;
   char buffer[20];
@@ -2208,6 +2215,7 @@ static int scan_time(scanner_t *sp, token_t *tok) {
   return 0;
 }
 
+// Scan a time, a date, a datetime, or a datatimetz
 static int scan_timestamp(scanner_t *sp, token_t *tok) {
   int year, month, day, hour, minute, sec, usec, tz;
   year = month = day = hour = minute = sec = usec = tz = -1;
@@ -2568,21 +2576,36 @@ static int scan_nonstring_literal(scanner_t *sp, token_t *tok) {
 // Return true if Unicode codepoint is allowed in a TOML 1.1 bare key.
 // Ranges taken verbatim from the TOML 1.1 spec grammar for bare-key-char.
 static bool is_unicode_bare_key_char(uint32_t cp) {
-  if (cp == 0xB2 || cp == 0xB3 || cp == 0xB9) return true;
-  if (0xBC <= cp && cp <= 0xBE) return true;
-  if (0xC0 <= cp && cp <= 0xD6) return true;
-  if (0xD8 <= cp && cp <= 0xF6) return true;
-  if (0xF8 <= cp && cp <= 0x37D) return true;
-  if (0x37F <= cp && cp <= 0x1FFF) return true;
-  if (cp == 0x200C || cp == 0x200D) return true;
-  if (0x203F <= cp && cp <= 0x2040) return true;
-  if (0x2070 <= cp && cp <= 0x218F) return true;
-  if (0x2460 <= cp && cp <= 0x24FF) return true;
-  if (0x2C00 <= cp && cp <= 0x2FEF) return true;
-  if (0x3001 <= cp && cp <= 0xD7FF) return true;
-  if (0xF900 <= cp && cp <= 0xFDCF) return true;
-  if (0xFDF0 <= cp && cp <= 0xFFFD) return true;
-  if (0x10000 <= cp && cp <= 0xEFFFF) return true;
+  if (cp == 0xB2 || cp == 0xB3 || cp == 0xB9)
+    return true;
+  if (0xBC <= cp && cp <= 0xBE)
+    return true;
+  if (0xC0 <= cp && cp <= 0xD6)
+    return true;
+  if (0xD8 <= cp && cp <= 0xF6)
+    return true;
+  if (0xF8 <= cp && cp <= 0x37D)
+    return true;
+  if (0x37F <= cp && cp <= 0x1FFF)
+    return true;
+  if (cp == 0x200C || cp == 0x200D)
+    return true;
+  if (0x203F <= cp && cp <= 0x2040)
+    return true;
+  if (0x2070 <= cp && cp <= 0x218F)
+    return true;
+  if (0x2460 <= cp && cp <= 0x24FF)
+    return true;
+  if (0x2C00 <= cp && cp <= 0x2FEF)
+    return true;
+  if (0x3001 <= cp && cp <= 0xD7FF)
+    return true;
+  if (0xF900 <= cp && cp <= 0xFDCF)
+    return true;
+  if (0xFDF0 <= cp && cp <= 0xFFFD)
+    return true;
+  if (0x10000 <= cp && cp <= 0xEFFFF)
+    return true;
   return false;
 }
 
