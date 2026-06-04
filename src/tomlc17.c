@@ -1762,11 +1762,11 @@ static inline token_t mktoken(scanner_t *sp, toktyp_t typ) {
 
 static inline bool is_valid_char(int ch) {
   // i.e. (0x20 <= ch && ch <= 0x7e) || (ch & 0x80);
-  return isprint(ch) || (ch & 0x80);
+  return isprint((unsigned char)ch) || (ch & 0x80);
 }
 
 static inline bool is_hex_char(int ch) {
-  ch = toupper(ch);
+  ch = toupper((unsigned char)ch);
   return ('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'F');
 }
 
@@ -2064,7 +2064,7 @@ static bool is_valid_timezone(int minute) {
 static int read_int(const char *p, int *ret) {
   const char *pp = p;
   int64_t val = 0;
-  for (; isdigit(*p); p++) {
+  for (; isdigit((unsigned char)*p); p++) {
     val = val * 10 + (*p - '0');
     if (val > INT_MAX) {
       return 0; // overflowed
@@ -2131,17 +2131,17 @@ static int read_time(const char *p, int *hour, int *minute, int *second,
     return p - pp;
   }
   p++; // skip the period
-  if (!isdigit(*p)) {
+  if (!isdigit((unsigned char)*p)) {
     // trailing period
     return 0;
   }
   int micro_factor = 100000;
-  while (isdigit(*p) && micro_factor) {
+  while (isdigit((unsigned char)*p) && micro_factor) {
     *usec += (*p - '0') * micro_factor;
     micro_factor /= 10;
     p++;
   }
-  while (isdigit(*p))
+  while (isdigit((unsigned char)*p))
     p++; // consume extra sub-microsecond digits
   return p - pp;
 }
@@ -2225,7 +2225,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
 
   // See if this a TIME only
   const char *p = buffer;
-  if (isdigit(p[0]) && isdigit(p[1]) && p[2] == ':') {
+  if (isdigit((unsigned char)p[0]) && isdigit((unsigned char)p[1]) && p[2] == ':') {
     n = read_time(buffer, &hour, &minute, &sec, &usec);
     if (!n) {
       return SETERROR(sp->ebuf, lineno, "invalid time");
@@ -2244,8 +2244,8 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   p += n;
 
   // Check if there is no time component in addition
-  if (!((p[0] == 'T' || p[0] == ' ' || p[0] == 't') && isdigit(p[1]) &&
-        isdigit(p[2]) && p[3] == ':')) {
+  if (!((p[0] == 'T' || p[0] == ' ' || p[0] == 't') && isdigit((unsigned char)p[1]) &&
+        isdigit((unsigned char)p[2]) && p[3] == ':')) {
     goto done; // no TIME component. we are done.
   }
 
@@ -2334,8 +2334,8 @@ static int process_numstr(char *buffer, int base, const char **reason) {
         *q++ = buffer[i];
         continue;
       }
-      int left = (i == 0) ? 0 : buffer[i - 1];
-      int right = buffer[i + 1];
+      int left = (i == 0) ? 0 : (unsigned char)buffer[i - 1];
+      int right = (unsigned char)buffer[i + 1];
       if (!isdigit(left) && !(base == 16 && is_hex_char(left))) {
         *reason = "underscore only allowed between digits";
         return -1;
@@ -2351,12 +2351,12 @@ static int process_numstr(char *buffer, int base, const char **reason) {
   // decimal points must be surrounded by digits. Also, convert to lowercase.
   for (int i = 0; buffer[i]; i++) {
     if (buffer[i] == '.') {
-      if (i == 0 || !isdigit(buffer[i - 1]) || !isdigit(buffer[i + 1])) {
+      if (i == 0 || !isdigit((unsigned char)buffer[i - 1]) || !isdigit((unsigned char)buffer[i + 1])) {
         *reason = "decimal point must be surrounded by digits";
         return -1;
       }
     } else if ('A' <= buffer[i] && buffer[i] <= 'Z') {
-      buffer[i] = tolower(buffer[i]);
+      buffer[i] = tolower((unsigned char)buffer[i]);
     }
   }
 
@@ -2364,7 +2364,7 @@ static int process_numstr(char *buffer, int base, const char **reason) {
     // check for leading 0:  '+01' is an error!
     q = buffer;
     q += (*q == '+' || *q == '-') ? 1 : 0;
-    if (q[0] == '0' && isdigit(q[1])) {
+    if (q[0] == '0' && isdigit((unsigned char)q[1])) {
       *reason = "leading 0 in numbers";
       return -1;
     }
@@ -2520,13 +2520,13 @@ static int scan_bool(scanner_t *sp, token_t *tok) {
 
 // Check if the next token may be TIME
 static inline bool test_time(const char *p, const char *endp) {
-  return &p[2] < endp && isdigit(p[0]) && isdigit(p[1]) && p[2] == ':';
+  return &p[2] < endp && isdigit((unsigned char)p[0]) && isdigit((unsigned char)p[1]) && p[2] == ':';
 }
 
 // Check if the next token may be DATE
 static inline bool test_date(const char *p, const char *endp) {
-  return &p[4] < endp && isdigit(p[0]) && isdigit(p[1]) && isdigit(p[2]) &&
-         isdigit(p[3]) && p[4] == '-';
+  return &p[4] < endp && isdigit((unsigned char)p[0]) && isdigit((unsigned char)p[1]) && isdigit((unsigned char)p[2]) &&
+         isdigit((unsigned char)p[3]) && p[4] == '-';
 }
 
 // Check if the next token may be BOOL
