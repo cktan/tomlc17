@@ -1784,6 +1784,34 @@ static void scan_init(scanner_t *sp, const char *src, int len, char *errbuf,
   sp->ebuf.len = errbufsz;
 }
 
+// Scan escape sequence characters after a backslash.
+// Return #char match on success, 0 if no match, -1 on error.
+static int scan_escape_chars(scanner_t *sp) {
+  const char* p = sp->cur;
+  if (p >= sp->endp) {
+    return 0;
+  }
+  int ch = *p++;
+  if (ch && strchr("btnfre\"\\", ch)) {
+    return 1;
+  }
+  int hex = (ch == 'x') ? 2 : (ch == 'u') ? 4 : (ch == 'U') ? 8 : 0;
+  if (hex) {
+    if (p + hex >= sp->endp) {
+      return SETERROR(sp->ebuf, sp->lineno, "expect %d hex digits after \\%c", hex,
+		      ch);
+    }
+    for (int i = 0; i < hex; i++) {
+      if (!is_hex_char(p[i])) {
+	return SETERROR(sp->ebuf, sp->lineno, "expect %d hex digits after \\%c", hex,
+			ch);
+      }
+    }
+    return hex + 1;
+  }
+  return 0;
+}
+
 // Scan """ ... """
 static int scan_multiline_string(scanner_t *sp, token_t *tok) {
   assert(S_MATCH3('"'));
@@ -1830,35 +1858,18 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
     }
 
     // handle escape char
-    ch = S_GET();
-    if (ch && strchr("btnfre\"\\", ch)) {
-      // skip \", \\, \b, \f, \n, \r, \t
+    int cnt = scan_escape_chars(sp);
+    if (cnt < 0) {
+      return -1;
+    }
+    if (cnt > 0) {
+      sp->cur += cnt;  // skip the escape sequence
       continue;
     }
-    int top = 0;
-    switch (ch) {
-    case 'x':
-      top = 2;
-      break;
-    case 'u':
-      top = 4;
-      break;
-    case 'U':
-      top = 8;
-      break;
-    default:
-      break;
-    }
-    if (top) {
-      for (int i = 0; i < top; i++) {
-        if (!is_hex_char(S_GET())) {
-          return SETERROR(sp->ebuf, sp->lineno,
-                          "expect %d hex digits after \\%c", top, ch);
-        }
-      }
-      continue;
-    }
+    assert(cnt == 0);
+    
     // handle line-ending backslash
+    ch = S_GET();
     if (ch == ' ' || ch == '\t') {
       // Although the spec does not allow for whitespace following a
       // line-ending backslash, some standard tests expect it.
@@ -1921,31 +1932,15 @@ static int scan_string(scanner_t *sp, token_t *tok) {
     }
 
     // handle escape char
-    ch = S_GET();
-    if (ch && strchr("btnfre\"\\", ch)) {
-      // skip \b, \t, \n, \f, \r, \e, \", \\  .
+    int cnt = scan_escape_chars(sp);
+    if (cnt < 0) {
+      return -1;
+    }
+    if (cnt > 0) {
+      sp->cur += cnt;
       continue;
     }
-    int top = 0;
-    switch (ch) {
-    case 'x':
-      top = 2;
-      break;
-    case 'u':
-      top = 4;
-      break;
-    case 'U':
-      top = 8;
-      break;
-    default:
-      return SETERROR(sp->ebuf, sp->lineno, "bad escape char in string");
-    }
-    for (int i = 0; i < top; i++) {
-      if (!is_hex_char(S_GET())) {
-        return SETERROR(sp->ebuf, sp->lineno, "expect %d hex digits after \\%c",
-                        top, ch);
-      }
-    }
+    return SETERROR(sp->ebuf, sp->lineno, "bad escape char in string");
   }
   tok->str.len = sp->cur - tok->str.ptr;
   tok->u.escp = escp;
