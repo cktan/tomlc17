@@ -282,6 +282,7 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
     *reason = "table too large";
     return NULL;
   }
+  
   {
     char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
     int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(N + 1));
@@ -653,11 +654,15 @@ bool toml_equiv(const toml_result_t *r1, const toml_result_t *r2) {
 toml_datum_t toml_get(toml_datum_t datum, const char *key) {
   if (datum.type == TOML_TABLE) {
     int n = datum.u.tab.size;
-    const char **pkey = datum.u.tab.key;
-    toml_datum_t *pvalue = datum.u.tab.value;
-    for (int i = 0; i < n; i++) {
-      if (0 == strcmp(pkey[i], key)) {
-        return pvalue[i];
+    if (n > 0) {
+      int key_len = strlen(key);
+      const char **pkey = datum.u.tab.key;
+      int *plen = datum.u.tab.len;
+      toml_datum_t *pvalue = datum.u.tab.value;
+      for (int i = 0; i < n; i++) {
+        if (plen[i] == key_len && 0 == memcmp(pkey[i], key, key_len)) {
+          return pvalue[i];
+        }
       }
     }
   }

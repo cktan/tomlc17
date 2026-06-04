@@ -35,6 +35,7 @@ When editing existing code:
 - Don't refactor things that aren't broken.
 - Match existing style, even if you'd do it differently.
 - If you notice unrelated dead code, mention it - don't delete it.
+- **One thing at a time**: Never combine multiple refactoring, optimization, or feature items in a single edit session. Work on them sequentially: implement one, test it, get verification, commit it, and only then proceed to the next.
 
 When your changes create orphans:
 - Remove imports/variables/functions that YOUR changes made unused.
