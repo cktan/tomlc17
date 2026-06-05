@@ -830,8 +830,12 @@ toml_result_t toml_parse_file(FILE *fp) {
       if (ferror(fp)) {
         snprintf(result.errmsg, sizeof(result.errmsg), "%s",
                  errno ? strerror(errno) : "Error reading file");
+        break;
       }
-      break; // error or eof
+      if (feof(fp)) {
+        break;
+      }
+      // small probability of short read due to signal, etc.
     }
   }
   // error?
