@@ -111,6 +111,59 @@ static char *pool_alloc(pool_t *pool, int n) {
   return ret;
 }
 
+
+// Cell: expandable buffer that behaves like realloc
+typedef struct cell_t cell_t;
+struct cell_t {
+  uint32_t top, max;
+  // first byte of data starts here (i.e. &(*this)[1])
+};
+
+
+static char* cell_realloc(char* p, int size) {
+  assert(size >= 0);
+  if (p == NULL) {
+    // first malloc
+    cell_t* tmp = REALLOC(NULL, size + sizeof(cell_t));
+    if (!tmp) {
+      return 0; // out of memory
+    }
+    cell_t* cp = tmp;
+    cp->max = size;
+    cp->top = size;
+    return (char*) &cp[1];
+  }
+
+  // obtain a handle to cell info
+  cell_t* cp = (cell_t*) (p - sizeof(cell_t));
+  if ((uint32_t) size <= cp->max) {
+    // cell is big enough for the new size. DONE.
+    cp->top = size;
+    return p;
+  }
+
+  // need to expand. add 30% margin.
+  int newmax = size * 1.3 + 100;
+  cell_t* tmp = REALLOC(cp, newmax + sizeof(cell_t));
+  if (!tmp) {
+    return 0; // out of memory
+  }
+  cp = tmp;
+  cp->max = newmax;
+  cp->top = size;
+  return (char*) &cp[1];
+}
+
+
+static void cell_free(char* p) {
+  if (p) {
+    cell_t* cp = (cell_t*) (p - sizeof(cell_t));
+    FREE(cp);
+  }
+}
+
+
+
 /* This is a string view. */
 typedef struct span_t span_t;
 struct span_t {
@@ -140,8 +193,6 @@ static int ucs_to_utf8(uint32_t code, char buf[4]);
 #define BRACE_LEVEL_MAX 30
 #define TABLE_MAX (1 << 14) // 16k
 #define ARRAY_MAX (1 << 14) // 16k
-
-static inline size_t align8(size_t x) { return (((x) + 7) & ~7); }
 
 enum toktyp_t {
   TOK_DOT = 1,
@@ -284,10 +335,12 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
   }
   
   {
-    char **pkey = REALLOC(tab->u.tab.key, sizeof(*pkey) * align8(N + 1));
-    int *plen = REALLOC(tab->u.tab.len, sizeof(*plen) * align8(N + 1));
-    toml_datum_t *value =
-        REALLOC(tab->u.tab.value, sizeof(*value) * align8(N + 1));
+    char **pkey = (char **)cell_realloc((char *)(void *)tab->u.tab.key,
+                                        sizeof(*pkey) * (N + 1));
+    int *plen =
+        (int *)cell_realloc((char *)tab->u.tab.len, sizeof(*plen) * (N + 1));
+    toml_datum_t *value = (toml_datum_t *)cell_realloc((char *)tab->u.tab.value,
+                                                       sizeof(*value) * (N + 1));
 
     // on success, must save new pointers in tab->u.tab because the
     // old memory areas are gone.
@@ -344,7 +397,8 @@ static toml_datum_t *arr_emplace(toml_datum_t *arr, const char **reason) {
     *reason = "array too large";
     return NULL;
   }
-  toml_datum_t *elem = REALLOC(arr->u.arr.elem, sizeof(*elem) * align8(n + 1));
+  toml_datum_t *elem = (toml_datum_t *)cell_realloc((char *)arr->u.arr.elem,
+                                                    sizeof(*elem) * (n + 1));
   if (!elem) {
     *reason = "out of memory";
     return NULL;
@@ -392,14 +446,14 @@ static void datum_free(toml_datum_t *datum) {
     for (int i = 0, top = datum->u.tab.size; i < top; i++) {
       datum_free(&datum->u.tab.value[i]);
     }
-    FREE(datum->u.tab.key);
-    FREE(datum->u.tab.len);
-    FREE(datum->u.tab.value);
+    cell_free((char *)(void *)datum->u.tab.key);
+    cell_free((char *)datum->u.tab.len);
+    cell_free((char *)datum->u.tab.value);
   } else if (datum->type == TOML_ARRAY) {
     for (int i = 0, top = datum->u.arr.size; i < top; i++) {
       datum_free(&datum->u.arr.elem[i]);
     }
-    FREE(datum->u.arr.elem);
+    cell_free((char *)datum->u.arr.elem);
   }
   // other types do not allocate memory
   *datum = DATUM_ZERO;
