@@ -807,45 +807,38 @@ toml_result_t toml_parse_file_ex(const char *fname) {
 toml_result_t toml_parse_file(FILE *fp) {
   toml_result_t result = {0};
   char *buf = 0;
-  int top, max; // index into buf[]
-  top = max = 0;
+  int top = 0;                  // number of bytes read into buf[]
+  enum { CHUNKSZ = 64 * 1024 }; // bytes to read per iteration
 
-  // Read file into memory
+  // Read file into memory. cell_realloc handles capacity growth, so we only
+  // need to ask for room for one more chunk (plus a terminating NUL) each pass.
   while (!feof(fp)) {
-    assert(top <= max);
-    if (top == max) {
-      // need to extend buf[]
-      int64_t tmpmax64 = (int64_t)max * 3 / 2 + 1000;
-      int tmpmax = (tmpmax64 > INT_MAX - 1) ? INT_MAX - 1 : (int)tmpmax64;
-      if (tmpmax == INT_MAX - 1) {
-        snprintf(result.errmsg, sizeof(result.errmsg), "file is too big");
-        FREE(buf);
-        return result;
-      }
-      // add an extra byte for terminating NUL
-      char *tmp = REALLOC(buf, tmpmax + 1);
-      if (!tmp) {
-        snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
-        FREE(buf);
-        return result;
-      }
-      buf = tmp;
-      max = tmpmax;
+    if (top > INT_MAX - CHUNKSZ - 1) {
+      snprintf(result.errmsg, sizeof(result.errmsg), "file is too big");
+      cell_free(buf);
+      return result;
     }
+    char *tmp = cell_realloc(buf, top + CHUNKSZ + 1);
+    if (!tmp) {
+      snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
+      cell_free(buf);
+      return result;
+    }
+    buf = tmp;
 
     errno = 0;
-    top += fread(buf + top, 1, max - top, fp);
+    top += fread(buf + top, 1, CHUNKSZ, fp);
     if (ferror(fp)) {
       snprintf(result.errmsg, sizeof(result.errmsg), "%s",
                errno ? strerror(errno) : "Error reading file");
-      FREE(buf);
+      cell_free(buf);
       return result;
     }
   }
   buf[top] = 0; // NUL terminator
 
   result = toml_parse(buf, top);
-  FREE(buf);
+  cell_free(buf);
   return result;
 }
 
