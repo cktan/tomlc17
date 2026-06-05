@@ -1792,27 +1792,24 @@ static void scan_init(scanner_t *sp, const char *src, int len, char *errbuf,
 // Scan escape sequence characters after a backslash.
 // Return #char match on success, 0 if no match, -1 on error.
 static int scan_escape_chars(scanner_t *sp) {
-  const char* p = sp->cur;
+  const char *p = sp->cur;
   if (p >= sp->endp) {
     return 0;
   }
   int ch = *p++;
   if (ch && strchr("btnfre\"\\", ch)) {
-    return 1;
+    return p - sp->cur;
   }
   int hex = (ch == 'x') ? 2 : (ch == 'u') ? 4 : (ch == 'U') ? 8 : 0;
   if (hex) {
-    if (p + hex >= sp->endp) {
-      return SETERROR(sp->ebuf, sp->lineno, "expect %d hex digits after \\%c", hex,
-		      ch);
+    int i = 0;
+    for (; i < hex && p < sp->endp && is_hex_char(*p); i++, p++)
+      ;
+    if (i != hex) {
+      return SETERROR(sp->ebuf, sp->lineno, "expect %d hex digits after \\%c",
+                      hex, ch);
     }
-    for (int i = 0; i < hex; i++) {
-      if (!is_hex_char(p[i])) {
-	return SETERROR(sp->ebuf, sp->lineno, "expect %d hex digits after \\%c", hex,
-			ch);
-      }
-    }
-    return hex + 1;
+    return p - sp->cur;
   }
   return 0;
 }
