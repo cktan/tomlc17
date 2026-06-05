@@ -111,7 +111,6 @@ static char *pool_alloc(pool_t *pool, int n) {
   return ret;
 }
 
-
 // Cell: expandable buffer that behaves like realloc
 typedef struct cell_t cell_t;
 struct cell_t {
@@ -119,24 +118,23 @@ struct cell_t {
   // first byte of data starts here (i.e. &(*this)[1])
 };
 
-
-static char* cell_realloc(char* p, int size) {
+static char *cell_realloc(char *p, int size) {
   assert(size >= 0);
   if (p == NULL) {
     // first malloc
-    cell_t* tmp = REALLOC(NULL, size + sizeof(cell_t));
+    cell_t *tmp = REALLOC(NULL, size + sizeof(cell_t));
     if (!tmp) {
       return 0; // out of memory
     }
-    cell_t* cp = tmp;
+    cell_t *cp = tmp;
     cp->max = size;
     cp->top = size;
-    return (char*) &cp[1];
+    return (char *)&cp[1];
   }
 
   // obtain a handle to cell info
-  cell_t* cp = (cell_t*) (p - sizeof(cell_t));
-  if ((uint32_t) size <= cp->max) {
+  cell_t *cp = (cell_t *)(p - sizeof(cell_t));
+  if ((uint32_t)size <= cp->max) {
     // cell is big enough for the new size. DONE.
     cp->top = size;
     return p;
@@ -144,25 +142,22 @@ static char* cell_realloc(char* p, int size) {
 
   // need to expand. add 30% margin.
   int newmax = size * 1.3 + 100;
-  cell_t* tmp = REALLOC(cp, newmax + sizeof(cell_t));
+  cell_t *tmp = REALLOC(cp, newmax + sizeof(cell_t));
   if (!tmp) {
     return 0; // out of memory
   }
   cp = tmp;
   cp->max = newmax;
   cp->top = size;
-  return (char*) &cp[1];
+  return (char *)&cp[1];
 }
 
-
-static void cell_free(char* p) {
+static void cell_free(char *p) {
   if (p) {
-    cell_t* cp = (cell_t*) (p - sizeof(cell_t));
+    cell_t *cp = (cell_t *)(p - sizeof(cell_t));
     FREE(cp);
   }
 }
-
-
 
 /* This is a string view. */
 typedef struct span_t span_t;
@@ -333,14 +328,14 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
     *reason = "table too large";
     return NULL;
   }
-  
+
   {
     char **pkey = (char **)cell_realloc((char *)(void *)tab->u.tab.key,
                                         sizeof(*pkey) * (N + 1));
     int *plen =
         (int *)cell_realloc((char *)tab->u.tab.len, sizeof(*plen) * (N + 1));
-    toml_datum_t *value = (toml_datum_t *)cell_realloc((char *)tab->u.tab.value,
-                                                       sizeof(*value) * (N + 1));
+    toml_datum_t *value = (toml_datum_t *)cell_realloc(
+        (char *)tab->u.tab.value, sizeof(*value) * (N + 1));
 
     // on success, must save new pointers in tab->u.tab because the
     // old memory areas are gone.
@@ -1921,11 +1916,11 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
       return -1;
     }
     if (cnt > 0) {
-      sp->cur += cnt;  // skip the escape sequence
+      sp->cur += cnt; // skip the escape sequence
       continue;
     }
     assert(cnt == 0);
-    
+
     // handle line-ending backslash
     ch = S_GET();
     if (ch == ' ' || ch == '\t') {
@@ -2283,7 +2278,8 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
 
   // See if this a TIME only
   const char *p = buffer;
-  if (isdigit((unsigned char)p[0]) && isdigit((unsigned char)p[1]) && p[2] == ':') {
+  if (isdigit((unsigned char)p[0]) && isdigit((unsigned char)p[1]) &&
+      p[2] == ':') {
     n = read_time(buffer, &hour, &minute, &sec, &usec);
     if (!n) {
       return SETERROR(sp->ebuf, lineno, "invalid time");
@@ -2302,8 +2298,9 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
   p += n;
 
   // Check if there is no time component in addition
-  if (!((p[0] == 'T' || p[0] == ' ' || p[0] == 't') && isdigit((unsigned char)p[1]) &&
-        isdigit((unsigned char)p[2]) && p[3] == ':')) {
+  if (!((p[0] == 'T' || p[0] == ' ' || p[0] == 't') &&
+        isdigit((unsigned char)p[1]) && isdigit((unsigned char)p[2]) &&
+        p[3] == ':')) {
     goto done; // no TIME component. we are done.
   }
 
@@ -2409,7 +2406,8 @@ static int process_numstr(char *buffer, int base, const char **reason) {
   // decimal points must be surrounded by digits. Also, convert to lowercase.
   for (int i = 0; buffer[i]; i++) {
     if (buffer[i] == '.') {
-      if (i == 0 || !isdigit((unsigned char)buffer[i - 1]) || !isdigit((unsigned char)buffer[i + 1])) {
+      if (i == 0 || !isdigit((unsigned char)buffer[i - 1]) ||
+          !isdigit((unsigned char)buffer[i + 1])) {
         *reason = "decimal point must be surrounded by digits";
         return -1;
       }
@@ -2578,12 +2576,14 @@ static int scan_bool(scanner_t *sp, token_t *tok) {
 
 // Check if the next token may be TIME
 static inline bool test_time(const char *p, const char *endp) {
-  return &p[2] < endp && isdigit((unsigned char)p[0]) && isdigit((unsigned char)p[1]) && p[2] == ':';
+  return &p[2] < endp && isdigit((unsigned char)p[0]) &&
+         isdigit((unsigned char)p[1]) && p[2] == ':';
 }
 
 // Check if the next token may be DATE
 static inline bool test_date(const char *p, const char *endp) {
-  return &p[4] < endp && isdigit((unsigned char)p[0]) && isdigit((unsigned char)p[1]) && isdigit((unsigned char)p[2]) &&
+  return &p[4] < endp && isdigit((unsigned char)p[0]) &&
+         isdigit((unsigned char)p[1]) && isdigit((unsigned char)p[2]) &&
          isdigit((unsigned char)p[3]) && p[4] == '-';
 }
 
