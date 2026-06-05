@@ -807,33 +807,42 @@ toml_result_t toml_parse_file_ex(const char *fname) {
 toml_result_t toml_parse_file(FILE *fp) {
   toml_result_t result = {0};
   char *buf = 0;
-  int top = 0;                  // number of bytes read into buf[]
-  enum { CHUNKSZ = 64 * 1024 }; // bytes to read per iteration
+  int top = 0;                 // number of bytes read into buf[]
+  enum { CHUNKSZ = 8 * 1024 }; // bytes to read per iteration
 
   // Read file into memory. cell_realloc handles capacity growth, so we only
   // need to ask for room for one more chunk (plus a terminating NUL) each pass.
-  while (!feof(fp)) {
+  // Drive the loop off fread's return value rather than feof(): feof() only
+  // reports true after a read has already hit EOF, and this also guarantees buf
+  // is allocated at least once before the NUL terminator below.
+  for (;;) {
     if (top > INT_MAX - CHUNKSZ - 1) {
       snprintf(result.errmsg, sizeof(result.errmsg), "file is too big");
-      cell_free(buf);
-      return result;
+      break;
     }
+    // add 1 to CHUNKSZ so we always have room for terminating NUL.
     char *tmp = cell_realloc(buf, top + CHUNKSZ + 1);
     if (!tmp) {
       snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
-      cell_free(buf);
-      return result;
+      break;
     }
     buf = tmp;
 
     errno = 0;
-    top += fread(buf + top, 1, CHUNKSZ, fp);
-    if (ferror(fp)) {
-      snprintf(result.errmsg, sizeof(result.errmsg), "%s",
-               errno ? strerror(errno) : "Error reading file");
-      cell_free(buf);
-      return result;
+    size_t n = fread(buf + top, 1, CHUNKSZ, fp);
+    top += n;
+    if (n < CHUNKSZ) { // short read => EOF or error
+      if (ferror(fp)) {
+        snprintf(result.errmsg, sizeof(result.errmsg), "%s",
+                 errno ? strerror(errno) : "Error reading file");
+      }
+      break; // error or eof
     }
+  }
+  // error?
+  if (result.errmsg[0]) {
+    cell_free(buf);
+    return result;
   }
   buf[top] = 0; // NUL terminator
 
