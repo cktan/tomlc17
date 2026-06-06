@@ -801,6 +801,10 @@ toml_result_t toml_parse_file_ex(const char *fname) {
  */
 toml_result_t toml_parse_file(FILE *fp) {
   toml_result_t result = {0};
+  if (!fp) {
+    snprintf(result.errmsg, sizeof(result.errmsg), "fp is NULL");
+    return result;
+  }
   char *buf = 0;
   int top = 0;                 // number of bytes read into buf[]
   enum { CHUNKSZ = 8 * 1024 }; // bytes to read per iteration
