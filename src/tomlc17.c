@@ -1914,7 +1914,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
     }
     // ch is backslash
     if (!escp) {
-      escp = sp->cur - 1;
+      escp = sp->cur - 1;	/* mark the first esc position */
       assert(*escp == '\\');
     }
 
