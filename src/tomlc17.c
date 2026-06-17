@@ -472,7 +472,13 @@ static int datum_copy(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
     break;
   case TOML_TABLE:
     for (int i = 0; i < src.u.tab.size; i++) {
-      span_t newkey = {src.u.tab.key[i], src.u.tab.len[i]};
+      char *keycopy = pool_alloc(pool, src.u.tab.len[i] + 1);
+      if (!keycopy) {
+        *reason = "out of memory";
+        goto bail;
+      }
+      memcpy(keycopy, src.u.tab.key[i], src.u.tab.len[i] + 1);
+      span_t newkey = {keycopy, src.u.tab.len[i]};
       toml_datum_t *pvalue = tab_emplace(dst, newkey, reason);
       if (!pvalue) {
         goto bail;
@@ -526,8 +532,14 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
     // for key-value in src:
     //    override key-value in dst.
     for (int i = 0; i < src.u.tab.size; i++) {
+      char *keycopy = pool_alloc(pool, src.u.tab.len[i] + 1);
+      if (!keycopy) {
+        *reason = "out of memory";
+        return -1;
+      }
+      memcpy(keycopy, src.u.tab.key[i], src.u.tab.len[i] + 1);
       span_t key;
-      key.ptr = src.u.tab.key[i];
+      key.ptr = keycopy;
       key.len = src.u.tab.len[i];
       toml_datum_t *pvalue = tab_emplace(dst, key, reason);
       if (!pvalue) {

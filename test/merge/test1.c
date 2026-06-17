@@ -157,6 +157,32 @@ static void test_empty_documents() {
   check("", "", "");
 }
 
+// Merged result must own its keys: tomlc17 requires each result be freed
+// independently, so reading the merged tree after freeing the inputs must
+// not touch the freed input pools.
+static void test_keys_outlive_inputs() {
+  printf("Running test_keys_outlive_inputs...\n");
+  const char *doc1 = "[owner]\n"
+                     "name = \"Alice\"\n";
+  const char *doc2 = "[owner]\n"
+                     "organization = \"ACME\"\n";
+  toml_result_t r1 = toml_parse(doc1, strlen(doc1));
+  toml_result_t r2 = toml_parse(doc2, strlen(doc2));
+  toml_result_t merged = toml_merge(&r1, &r2);
+  CHECK(merged.ok);
+
+  toml_free(r1);
+  toml_free(r2);
+
+  toml_datum_t owner = toml_get(merged.toptab, "owner");
+  toml_datum_t name = toml_get(owner, "name");
+  toml_datum_t org = toml_get(owner, "organization");
+  CHECK(name.type == TOML_STRING && 0 == strcmp(name.u.str.ptr, "Alice"));
+  CHECK(org.type == TOML_STRING && 0 == strcmp(org.u.str.ptr, "ACME"));
+
+  toml_free(merged);
+}
+
 int main() {
   test_simple_merge();
   test_overwrite_values();
@@ -167,6 +193,7 @@ int main() {
   test_array_of_tables();
   test_type_conflicts();
   test_empty_documents();
+  test_keys_outlive_inputs();
 
   printf("All tests completed.\n");
   return 0;
