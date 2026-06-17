@@ -64,10 +64,12 @@ typedef enum toml_type_t toml_type_t;
  */
 typedef struct toml_datum_t toml_datum_t;
 struct toml_datum_t {
-  toml_type_t type; /**< Type of the datum */
-  uint32_t flag;    /**< Internal flag, do not use */
-  int lineno;       /**< 1-based source line number, 0 if synthesized */
-  int colno;        /**< 1-based source column number, 0 if synthesized */
+  toml_type_t type;   /**< Type of the datum */
+  uint32_t flag;      /**< Internal flag, do not use */
+  int lineno;         /**< 1-based source line number, 0 if synthesized */
+  int colno;          /**< 1-based source column number, 0 if synthesized */
+  const char *source; /**< Source name (e.g. filename), NULL if not provided.
+                           Owned by the result; valid until toml_free(). */
   union {
     const char *s; /**< Shorthand for str.ptr */
     struct {
@@ -120,6 +122,21 @@ struct toml_result_t {
 TOML_EXTERN toml_result_t toml_parse(const char *src, int len);
 
 /**
+ * @brief Parse a TOML document, tagging every datum with a source name.
+ *
+ * @param src A NUL-terminated string containing the TOML document.
+ * @param len The length of the string (excluding the NUL terminator).
+ * @param name A source name (e.g. filename) copied into the result, or NULL.
+ *             Every parsed datum's `source` is set to this name (or NULL).
+ * @return A toml_result_t structure. Must be freed with toml_free().
+ *
+ * IMPORTANT: src[] must be a NUL terminated string! The len parameter
+ * does not include the NUL terminator.
+ */
+TOML_EXTERN toml_result_t toml_parse_named(const char *src, int len,
+                                           const char *name);
+
+/**
  * @brief Parse a TOML document from a file pointer.
  *
  * @param fp A pointer to the open file. The caller is responsible for closing
@@ -129,6 +146,18 @@ TOML_EXTERN toml_result_t toml_parse(const char *src, int len);
  * IMPORTANT: you are still responsible to fclose(fp).
  */
 TOML_EXTERN toml_result_t toml_parse_file(FILE *fp);
+
+/**
+ * @brief Parse a TOML document from a file pointer, tagging datums with a name.
+ *
+ * @param fp A pointer to the open file. The caller is responsible for closing
+ * it.
+ * @param name A source name copied into the result, or NULL.
+ * @return A toml_result_t structure. Must be freed with toml_free().
+ *
+ * IMPORTANT: you are still responsible to fclose(fp).
+ */
+TOML_EXTERN toml_result_t toml_parse_file_named(FILE *fp, const char *name);
 
 /**
  * @brief Parse a TOML document from a file path.

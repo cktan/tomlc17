@@ -22,7 +22,6 @@ library.
 
 For complete API details, refer to [`API.md`](API.md).
 
-
 ### Example: Parsing & Extraction
 
 Parsing a toml document creates a tree data structure in memory that
