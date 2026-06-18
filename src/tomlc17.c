@@ -291,6 +291,7 @@ struct parser_t {
   toml_datum_t toptab;  // top table
   toml_datum_t *curtab; // current table
   pool_t *pool;         // memory pool for strings
+  const char *srcname;  // source name copied into the pool, or NULL
   ebuf_t ebuf;          // buffer to store last error message
 };
 
@@ -454,15 +455,67 @@ static void datum_free(toml_datum_t *datum) {
   *datum = DATUM_ZERO;
 }
 
+// Maps each distinct source-name pointer to a single copy in the destination
+// pool (deduplicated), so the merged pool holds at most one copy of each source
+// name (keeping it within the r1pool->top + r2pool->top budget).
+typedef struct srcmap_t srcmap_t;
+struct srcmap_t {
+  pool_t *pool;
+  const char **olds; // cell buffer of old pointers
+  const char **news; // cell buffer of new (copied) pointers
+  int n, cap;
+};
+
+// Returns the deduplicated copy of src, or NULL for a NULL input or on
+// out-of-memory. Callers distinguish the two: a non-NULL src that yields NULL
+// is a hard failure.
+static const char *dedup_source(srcmap_t *m, const char *src) {
+  if (!src) {
+    return NULL;
+  }
+  for (int i = 0; i < m->n; i++) {
+    if (m->olds[i] == src) {
+      return m->news[i];
+    }
+  }
+  // Grow the memo first, so an allocation failure aborts cleanly.
+  if (m->n == m->cap) {
+    int newcap = m->cap ? m->cap * 2 : 4;
+    const char **no = (const char **)cell_realloc((char *)(void *)m->olds,
+                                                  sizeof(*no) * newcap);
+    if (!no) {
+      return NULL; // out of memory
+    }
+    m->olds = no;
+    const char **nn = (const char **)cell_realloc((char *)(void *)m->news,
+                                                  sizeof(*nn) * newcap);
+    if (!nn) {
+      return NULL; // out of memory
+    }
+    m->news = nn;
+    m->cap = newcap;
+  }
+  int len = (int)strlen(src) + 1;
+  char *p = pool_alloc(m->pool, len);
+  if (!p) {
+    return NULL; // out of memory
+  }
+  memcpy(p, src, len);
+  m->olds[m->n] = src;
+  m->news[m->n] = p;
+  m->n++;
+  return p;
+}
+
 // Make a deep copy of src to dst.
 // Return 0 on success, -1 otherwise.
-static int datum_copy(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
+static int datum_copy(toml_datum_t *dst, toml_datum_t src, srcmap_t *sm,
                       const char **reason) {
   *dst = mkdatum_at(src.type, src.lineno, src.colno);
   dst->flag = src.flag;
   switch (src.type) {
   case TOML_STRING:
-    dst->u.str.ptr = pool_alloc(pool, src.u.str.len + 1);
+    dst->u.str.ptr = pool_alloc(sm->pool, src.u.str.len + 1);
     if (!dst->u.str.ptr) {
       *reason = "out of memory";
       goto bail;
@@ -472,7 +525,7 @@ static int datum_copy(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
     break;
   case TOML_TABLE:
     for (int i = 0; i < src.u.tab.size; i++) {
-      char *keycopy = pool_alloc(pool, src.u.tab.len[i] + 1);
+      char *keycopy = pool_alloc(sm->pool, src.u.tab.len[i] + 1);
       if (!keycopy) {
         *reason = "out of memory";
         goto bail;
@@ -483,7 +536,7 @@ static int datum_copy(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
       if (!pvalue) {
         goto bail;
       }
-      if (datum_copy(pvalue, src.u.tab.value[i], pool, reason)) {
+      if (datum_copy(pvalue, src.u.tab.value[i], sm, reason)) {
         goto bail;
       }
     }
@@ -494,7 +547,7 @@ static int datum_copy(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
       if (!pelem) {
         goto bail;
       }
-      if (datum_copy(pelem, src.u.arr.elem[i], pool, reason)) {
+      if (datum_copy(pelem, src.u.arr.elem[i], sm, reason)) {
         goto bail;
       }
     }
@@ -504,6 +557,11 @@ static int datum_copy(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
     break;
   }
 
+  dst->source = dedup_source(sm, src.source);
+  if (src.source && !dst->source) {
+    *reason = "out of memory";
+    goto bail;
+  }
   return 0;
 
 bail:
@@ -521,18 +579,18 @@ static inline bool is_array_of_tables(toml_datum_t datum) {
 }
 
 // Merge src into dst. Return 0 on success, -1 otherwise.
-static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
+static int datum_merge(toml_datum_t *dst, toml_datum_t src, srcmap_t *sm,
                        const char **reason) {
   if (dst->type != src.type) {
     datum_free(dst);
-    return datum_copy(dst, src, pool, reason);
+    return datum_copy(dst, src, sm, reason);
   }
   switch (src.type) {
   case TOML_TABLE:
     // for key-value in src:
     //    override key-value in dst.
     for (int i = 0; i < src.u.tab.size; i++) {
-      char *keycopy = pool_alloc(pool, src.u.tab.len[i] + 1);
+      char *keycopy = pool_alloc(sm->pool, src.u.tab.len[i] + 1);
       if (!keycopy) {
         *reason = "out of memory";
         return -1;
@@ -546,10 +604,10 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
         return -1;
       }
       if (pvalue->type) {
-        DO(datum_merge(pvalue, src.u.tab.value[i], pool, reason));
+        DO(datum_merge(pvalue, src.u.tab.value[i], sm, reason));
       } else {
         datum_free(pvalue);
-        DO(datum_copy(pvalue, src.u.tab.value[i], pool, reason));
+        DO(datum_copy(pvalue, src.u.tab.value[i], sm, reason));
       }
     }
     return 0;
@@ -561,7 +619,7 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
         if (!pelem) {
           return -1;
         }
-        DO(datum_copy(pelem, src.u.arr.elem[i], pool, reason));
+        DO(datum_copy(pelem, src.u.arr.elem[i], sm, reason));
       }
       return 0;
     }
@@ -570,7 +628,7 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, pool_t *pool,
     break;
   }
   datum_free(dst);
-  return datum_copy(dst, src, pool, reason);
+  return datum_copy(dst, src, sm, reason);
 }
 
 // Compare the content of a and b.
@@ -663,6 +721,7 @@ toml_result_t toml_merge(const toml_result_t *r1, const toml_result_t *r2) {
   const char *reason = "";
   toml_result_t ret = {0};
   pool_t *pool = 0;
+  srcmap_t sm = {0};
   if (!r1->ok) {
     reason = "param error: r1 not ok";
     goto bail;
@@ -680,22 +739,27 @@ toml_result_t toml_merge(const toml_result_t *r1, const toml_result_t *r2) {
       goto bail;
     }
   }
+  sm.pool = pool;
 
   // Make a copy of r1
-  if (datum_copy(&ret.toptab, r1->toptab, pool, &reason)) {
+  if (datum_copy(&ret.toptab, r1->toptab, &sm, &reason)) {
     goto bail;
   }
 
   // Merge r2 into the result
-  if (datum_merge(&ret.toptab, r2->toptab, pool, &reason)) {
+  if (datum_merge(&ret.toptab, r2->toptab, &sm, &reason)) {
     goto bail;
   }
 
+  cell_free((char *)(void *)sm.olds);
+  cell_free((char *)(void *)sm.news);
   ret.ok = 1;
   ret.__internal = pool;
   return ret;
 
 bail:
+  cell_free((char *)(void *)sm.olds);
+  cell_free((char *)(void *)sm.news);
   pool_destroy(pool);
   snprintf(ret.errmsg, sizeof(ret.errmsg), "%s", reason);
   return ret;
@@ -803,15 +867,19 @@ toml_result_t toml_parse_file_ex(const char *fname) {
              strerror(errno));
     return result;
   }
-  result = toml_parse_file(fp);
+  result = toml_parse_file_named(fp, fname);
   fclose(fp);
   return result;
 }
 
-/**
- *  Parse a toml document.
- */
 toml_result_t toml_parse_file(FILE *fp) {
+  return toml_parse_file_named(fp, NULL);
+}
+
+/**
+ *  Parse a toml document from a file, tagging datums with name.
+ */
+toml_result_t toml_parse_file_named(FILE *fp, const char *name) {
   toml_result_t result = {0};
   if (!fp) {
     snprintf(result.errmsg, sizeof(result.errmsg), "fp is NULL");
@@ -861,15 +929,37 @@ toml_result_t toml_parse_file(FILE *fp) {
   }
   buf[top] = 0; // NUL terminator
 
-  result = toml_parse(buf, top);
+  result = toml_parse_named(buf, top, name);
   cell_free(buf);
   return result;
+}
+
+static void set_source_recursive(toml_datum_t *datum, const char *source) {
+  datum->source = source;
+  switch (datum->type) {
+  case TOML_ARRAY:
+    for (int i = 0, top = datum->u.arr.size; i < top; i++) {
+      set_source_recursive(&datum->u.arr.elem[i], source);
+    }
+    break;
+  case TOML_TABLE:
+    for (int i = 0, top = datum->u.tab.size; i < top; i++) {
+      set_source_recursive(&datum->u.tab.value[i], source);
+    }
+    break;
+  default:
+    break;
+  }
 }
 
 /**
  *  Parse a toml document.
  */
 toml_result_t toml_parse(const char *src, int len) {
+  return toml_parse_named(src, len, NULL);
+}
+
+toml_result_t toml_parse_named(const char *src, int len, const char *name) {
   toml_result_t result = {0};
   parser_t parser = {0};
   parser_t *pp = &parser;
@@ -915,12 +1005,21 @@ toml_result_t toml_parse(const char *src, int len) {
   pp->ebuf.ptr = result.errmsg; // parse error will be printed into pp->ebuf
   pp->ebuf.len = sizeof(result.errmsg);
 
-  // Alloc memory pool
-  pp->pool =
-      pool_create(len + 10); // add some extra bytes for NUL term and safety
+  // Alloc memory pool (extra bytes for NUL term, safety, and the source name)
+  int namelen = name ? (int)strlen(name) + 1 : 0;
+  pp->pool = pool_create(len + 10 + namelen);
   if (!pp->pool) {
     snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
     goto bail;
+  }
+  if (name) {
+    char *p = pool_alloc(pp->pool, namelen);
+    if (!p) {
+      snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
+      goto bail;
+    }
+    memcpy(p, name, namelen);
+    pp->srcname = p;
   }
 
   // Initialize scanner. Scan error will be printed into pp->ebuf.
@@ -969,6 +1068,7 @@ toml_result_t toml_parse(const char *src, int len) {
 
   // return result
   result.ok = true;
+  set_source_recursive(&pp->toptab, pp->srcname);
   result.toptab = pp->toptab;
   result.__internal = (void *)pp->pool;
   return result;

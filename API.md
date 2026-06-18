@@ -56,6 +56,7 @@ struct toml_datum_t {
   uint32_t    flag;   // internal
   int         lineno; // 1-based source line, 0 when synthesized
   int         colno;  // 1-based source column, 0 when synthesized
+  const char *source; // source name (e.g. filename), NULL when not provided
   union {
     const char *s;           // TOML_STRING: shorthand for str.ptr
     struct {
@@ -91,6 +92,9 @@ struct toml_datum_t {
 - `flag`: Internal use only. Do not read or modify.
 - `lineno`: 1-based line number in the source document where this value appeared. Set to 0 for synthesized values.
 - `colno`: 1-based column number in the source document where this value appeared. Set to 0 for synthesized values.
+- `source`: Name of the document this value came from (e.g. the filename), or
+  `NULL` if no name was supplied. Copied into the result and preserved across
+  `toml_merge`, so merged documents retain each entry's origin.
 - `u`: Union containing the actual value based on the `type`.
 
 **Accessing values by type:**
@@ -170,7 +174,30 @@ toml_result_t toml_parse_file_ex(const char *fname);
 ```
 
 Parse a TOML document from a file path. Opens and closes the file internally.
-The result must be released with `toml_free()`.
+Every parsed datum's `source` is set to `fname`. The result must be released
+with `toml_free()`.
+
+---
+
+### `toml_parse_named`
+
+```c
+toml_result_t toml_parse_named(const char *src, int len, const char *name);
+```
+
+Like `toml_parse`, but tags every parsed datum's `source` with `name` (copied
+into the result; pass `NULL` for no name). The name survives `toml_merge`.
+
+---
+
+### `toml_parse_file_named`
+
+```c
+toml_result_t toml_parse_file_named(FILE *fp, const char *name);
+```
+
+Like `toml_parse_file`, but tags datums with `name`. `toml_parse_file_ex`
+automatically uses the file path as the name.
 
 ---
 
