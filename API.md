@@ -272,8 +272,9 @@ with `toml_free()` independently.
 bool toml_equiv(const toml_result_t *r1, const toml_result_t *r2);
 ```
 
-Return `true` if the two results represent identical documents. Table key order
-and array element order are both significant.
+Return `true` if the two results represent identical documents. Tables are
+compared as unordered maps (keys matched by name); array element order is
+significant.
 
 ---
 

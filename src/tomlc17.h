@@ -234,7 +234,8 @@ TOML_EXTERN toml_result_t toml_merge(const toml_result_t *r1,
 /**
  * @brief Compare two TOML results for equality.
  *
- * Comparison is sensitive to the order of elements in arrays and tables.
+ * Tables compare as unordered maps (keys matched by name); array element
+ * order is significant.
  *
  * @param r1 The first TOML result.
  * @param r2 The second TOML result.
