@@ -177,11 +177,6 @@ struct keypart_t {
 static int utf8_to_ucs(const char *s, int len, uint32_t *ret);
 static int ucs_to_utf8(uint32_t code, char buf[4]);
 
-// flags for toml_datum_t::flag.
-#define FLAG_INLINED 1
-#define FLAG_STDEXPR 2
-#define FLAG_EXPLICIT 4
-
 // Maximum levels of brackets and braces to prevent
 // stack overflow during recursive descent of the parser.
 #define BRACKET_LEVEL_MAX 30
@@ -1232,7 +1227,7 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno, int colno,
     // Not found: add a new (key, tab) pair.
     if (j < 0) {
       toml_datum_t newtab = mkdatum_at(TOML_TABLE, lineno, colno);
-      newtab.flag |= stdtabexpr ? FLAG_STDEXPR : 0;
+      newtab.flag |= stdtabexpr ? TOML_FLAG_STDEXPR : 0;
       if (tab_add(tab, keypart->span[i], newtab, &reason)) {
         SETERROR(pp->ebuf, lineno, "%s", reason);
         return NULL;
@@ -1357,7 +1352,7 @@ static int parse_inline_array(parser_t *pp, token_t tok,
   }
 
   // Set the INLINE flag for all things in this array.
-  set_flag_recursive(ret_datum, FLAG_INLINED);
+  set_flag_recursive(ret_datum, TOML_FLAG_INLINED);
   return 0;
 }
 
@@ -1423,12 +1418,12 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     }
 
     // If tab is a previously declared inline table: error.
-    if (tab->flag & FLAG_INLINED) {
+    if (tab->flag & TOML_FLAG_INLINED) {
       return SETERROR(pp->ebuf, tok.lineno, "inline table cannot be extended");
     }
 
     // We are explicitly defining it now.
-    tab->flag |= FLAG_EXPLICIT;
+    tab->flag |= TOML_FLAG_EXPLICIT;
 
     // match EQUAL
     DO(scan_value(&pp->scanner, &tok));
@@ -1458,7 +1453,7 @@ static int parse_inline_table(parser_t *pp, token_t tok,
     need_comma = 1, was_comma = 0;
   }
 
-  set_flag_recursive(ret_datum, FLAG_INLINED);
+  set_flag_recursive(ret_datum, TOML_FLAG_INLINED);
   return 0;
 }
 
@@ -1530,12 +1525,12 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
   int j = tab_find(tab, lastkeypart);
   if (j < 0) {
     // If not found: add it.
-    if (tab->flag & FLAG_INLINED) {
+    if (tab->flag & TOML_FLAG_INLINED) {
       return SETERROR(pp->ebuf, keylineno, "inline table cannot be extended");
     }
     const char *reason;
     toml_datum_t newtab = mkdatum_at(TOML_TABLE, keylineno, keycolno);
-    newtab.flag |= FLAG_STDEXPR;
+    newtab.flag |= TOML_FLAG_STDEXPR;
     if (tab_add(tab, lastkeypart, newtab, &reason)) {
       return SETERROR(pp->ebuf, keylineno, "%s", reason);
     }
@@ -1544,7 +1539,7 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
   } else {
     // Found: check for errors
     tab = &tab->u.tab.value[j];
-    if (tab->flag & FLAG_EXPLICIT) {
+    if (tab->flag & TOML_FLAG_EXPLICIT) {
       /*
         This is not OK:
         [x.y.z]
@@ -1556,7 +1551,7 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
       */
       return SETERROR(pp->ebuf, keylineno, "table defined more than once");
     }
-    if (!(tab->flag & FLAG_STDEXPR)) {
+    if (!(tab->flag & TOML_FLAG_STDEXPR)) {
       /*
       [t1]			# OK
       t2.t3.v = 0		# OK
@@ -1568,7 +1563,7 @@ static int parse_std_table_expr(parser_t *pp, token_t tok) {
   }
 
   // Set explicit flag on tab
-  tab->flag |= FLAG_EXPLICIT;
+  tab->flag |= TOML_FLAG_EXPLICIT;
   tab->lineno = keylineno;
   tab->colno = keycolno;
 
@@ -1614,7 +1609,7 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   int idx = tab_find(tab, lastkeypart);
   if (idx == -1) {
     // If not found, add an array of table.
-    if (tab->flag & FLAG_INLINED) {
+    if (tab->flag & TOML_FLAG_INLINED) {
       return SETERROR(pp->ebuf, keylineno, "inline table cannot be extended");
     }
     toml_datum_t newarr = mkdatum_at(TOML_ARRAY, keylineno, keycolno);
@@ -1630,7 +1625,7 @@ static int parse_array_table_expr(parser_t *pp, token_t tok) {
   }
   // Add an empty table to the array
   toml_datum_t *arr = &tab->u.tab.value[idx];
-  if (arr->flag & FLAG_INLINED) {
+  if (arr->flag & TOML_FLAG_INLINED) {
     return SETERROR(pp->ebuf, keylineno, "cannot extend a static array");
   }
   toml_datum_t *pelem = arr_emplace(arr, &reason);
@@ -1666,7 +1661,7 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
   for (int i = 0; i < keypart.nspan - 1; i++) {
     int j = tab_find(tab, keypart.span[i]);
     if (j < 0) {
-      if (i > 0 && (tab->flag & FLAG_EXPLICIT)) {
+      if (i > 0 && (tab->flag & TOML_FLAG_EXPLICIT)) {
         return SETERROR(
             pp->ebuf, keylineno,
             "cannot extend a previously defined table using dotted expression");
@@ -1693,10 +1688,10 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
   }
 
   // Check for disallowed situations.
-  if (tab->flag & FLAG_INLINED) {
+  if (tab->flag & TOML_FLAG_INLINED) {
     return SETERROR(pp->ebuf, keylineno, "inline table cannot be extended");
   }
-  if (keypart.nspan > 1 && (tab->flag & FLAG_EXPLICIT)) {
+  if (keypart.nspan > 1 && (tab->flag & TOML_FLAG_EXPLICIT)) {
     return SETERROR(
         pp->ebuf, keylineno,
         "cannot extend a previously defined table using dotted expression");
