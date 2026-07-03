@@ -675,19 +675,26 @@ static bool datum_equiv(toml_datum_t a, toml_datum_t b) {
     }
     return true;
   case TOML_TABLE:
+    // Tables are unordered maps: match each key of a against any key of b,
+    // not positionally. Equal sizes plus a full one-way key match implies a
+    // bijection because keys are unique within a table.
     N = a.u.tab.size;
     if (N != b.u.tab.size) {
       return false;
     }
     for (int i = 0; i < N; i++) {
       int len = a.u.tab.len[i];
-      if (len != b.u.tab.len[i]) {
+      int j = 0;
+      for (; j < N; j++) {
+        if (len == b.u.tab.len[j] &&
+            0 == memcmp(a.u.tab.key[i], b.u.tab.key[j], len)) {
+          break;
+        }
+      }
+      if (j == N) {
         return false;
       }
-      if (0 != memcmp(a.u.tab.key[i], b.u.tab.key[i], len)) {
-        return false;
-      }
-      if (!datum_equiv(a.u.tab.value[i], b.u.tab.value[i])) {
+      if (!datum_equiv(a.u.tab.value[i], b.u.tab.value[j])) {
         return false;
       }
     }
