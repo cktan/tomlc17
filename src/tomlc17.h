@@ -99,6 +99,16 @@ struct toml_datum_t {
 };
 
 /**
+ * @brief Bit values for toml_datum_t::flag.
+ *
+ * These record how a datum appeared in the source document. They are set
+ * by the parser and are informational for API users.
+ */
+#define TOML_FLAG_INLINED 1  /**< appeared in inline form, e.g. {x = 1} or [1, 2] */
+#define TOML_FLAG_STDEXPR 2  /**< table created by a [table] header */
+#define TOML_FLAG_EXPLICIT 4 /**< table explicitly defined */
+
+/**
  * @brief Result of a TOML parsing operation.
  */
 typedef struct toml_result_t toml_result_t;
