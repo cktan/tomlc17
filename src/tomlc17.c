@@ -79,12 +79,15 @@ static int SETERROR(ebuf_t ebuf, int lineno, const char *fmt, ...) {
 static_assert(PAGE_SMALL_SIZE > PAGE_LARGE_THRESHOLD,
               "page/threshold invariant");
 
+#define PAGE_MAGIC 0x50414745u // "PAGE"
+
 typedef struct page_t page_t;
 struct page_t {
-  int top;      // offset of first free byte in data[]
-  int max;      // size of data[]
-  page_t *next; // link to next page in list
-  char data[1]; // first byte starts here
+  uint32_t magic; // PAGE_MAGIC, checked to catch corruption/use-after-free
+  int top;        // offset of first free byte in data[]
+  int max;        // size of data[]
+  page_t *next;   // link to next page in list
+  char data[1];   // first byte starts here
 };
 
 #define POOL_MAGIC 0x504f4f4cu // "POOL"
@@ -106,6 +109,7 @@ static page_t *page_create(int size) {
   if (!page) {
     return NULL;
   }
+  page->magic = PAGE_MAGIC;
   page->top = 0;
   page->max = size;
   page->next = NULL;
@@ -143,11 +147,15 @@ static void pool_destroy(pool_t *pool) {
   pool->magic = 0; // catch use-after-free/double-destroy
   for (page_t *p = pool->small; p;) {
     page_t *next = p->next;
+    assert(p->magic == PAGE_MAGIC);
+    p->magic = 0; // catch use-after-free/double-destroy
     FREE(p);
     p = next;
   }
   for (page_t *p = pool->large; p;) {
     page_t *next = p->next;
+    assert(p->magic == PAGE_MAGIC);
+    p->magic = 0; // catch use-after-free/double-destroy
     FREE(p);
     p = next;
   }
@@ -172,6 +180,7 @@ static char *pool_alloc(pool_t *pool, int n) {
     return page->data;
   }
 
+  assert(pool->small->magic == PAGE_MAGIC);
   if (pool->small->top + n > pool->small->max) {
     // Current small page doesn't have room: abandon its leftover
     // space and start a fresh one.
