@@ -87,10 +87,13 @@ struct page_t {
   char data[1]; // first byte starts here
 };
 
+#define POOL_MAGIC 0x504f4f4cu // "POOL"
+
 typedef struct pool_t pool_t;
 struct pool_t {
-  page_t *small; // most recent small page, bump-allocated piecemeal
-  page_t *large; // most recent large page, each used for one alloc only
+  uint32_t magic; // POOL_MAGIC, checked to catch corruption/use-after-free
+  page_t *small;  // most recent small page, bump-allocated piecemeal
+  page_t *large;  // most recent large page, each used for one alloc only
 };
 
 /**
@@ -119,6 +122,7 @@ static pool_t *pool_create(void) {
   if (!pool) {
     return NULL;
   }
+  pool->magic = POOL_MAGIC;
   pool->small = page_create(PAGE_SMALL_SIZE);
   if (!pool->small) {
     FREE(pool);
@@ -135,6 +139,8 @@ static void pool_destroy(pool_t *pool) {
   if (!pool) {
     return;
   }
+  assert(pool->magic == POOL_MAGIC);
+  pool->magic = 0; // catch use-after-free/double-destroy
   for (page_t *p = pool->small; p;) {
     page_t *next = p->next;
     FREE(p);
@@ -153,6 +159,7 @@ static void pool_destroy(pool_t *pool) {
  *  success, or NULL if out of memory.
  */
 static char *pool_alloc(pool_t *pool, int n) {
+  assert(pool->magic == POOL_MAGIC);
   if (n > PAGE_LARGE_THRESHOLD) {
     // Large alloc: own exactly-sized page, used once.
     page_t *page = page_create(n);

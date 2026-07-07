@@ -82,7 +82,10 @@ down.
 **`pool_t`** (`tomlc17.c:90`) is an arena for the *string bytes*
 themselves (unescaped string/literal contents, table keys, source
 names) — data that is written once and never resized or individually
-freed. A pool is two linked lists of `page_t` (`tomlc17.c:82`):
+freed. It carries a `magic` field checked by `assert()` in `pool_alloc`
+and `pool_destroy` (cleared on destroy) to catch corruption, use-after-
+free, and double-destroy. A pool is two linked lists of `page_t`
+(`tomlc17.c:82`):
 
 - `pool->small` — 4KB (`PAGE_SMALL_SIZE`) pages, bump-allocated
   piecemeal via `pool_alloc`. When the current page doesn't have
