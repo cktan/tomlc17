@@ -66,48 +66,117 @@ static int SETERROR(ebuf_t ebuf, int lineno, const char *fmt, ...) {
 }
 
 /*
- *  Memory pool. Allocated a big block once and hand out piecemeal.
+ *  Memory pool. A pool is a pair of page_t lists: small allocations
+ *  (<= PAGE_LARGE_THRESHOLD bytes) are bump-allocated out of
+ *  PAGE_SMALL_SIZE pages, handed out piecemeal until a page fills up
+ *  and a fresh one is linked in front. Large allocations get their
+ *  own exactly-sized page, used once and never shared. This avoids
+ *  ever mallocing one giant block sized for the whole document.
  */
+#define PAGE_SMALL_SIZE 4096
+#define PAGE_LARGE_THRESHOLD 1024
+// Small allocations must always fit in a fresh small page.
+static_assert(PAGE_SMALL_SIZE > PAGE_LARGE_THRESHOLD,
+              "page/threshold invariant");
+
+typedef struct page_t page_t;
+struct page_t {
+  int top;      // offset of first free byte in data[]
+  int max;      // size of data[]
+  page_t *next; // link to next page in list
+  char data[1]; // first byte starts here
+};
+
 typedef struct pool_t pool_t;
 struct pool_t {
-  int max;     // size of buf[]
-  int top;     // offset of first free byte in buf[]
-  char buf[1]; // first byte starts here
+  page_t *small; // most recent small page, bump-allocated piecemeal
+  page_t *large; // most recent large page, each used for one alloc only
 };
 
 /**
- *  Create a memory pool of N bytes. Return the memory pool on
- *  success, or NULL if out of memory.
+ *  Create a page of `size` bytes. Return the page on success, or
+ *  NULL if out of memory.
  */
-static pool_t *pool_create(int N) {
-  if (N <= 0) {
-    N = 100; // minimum
+static page_t *page_create(int size) {
+  int totalsz = sizeof(page_t) - 1 + size;
+  page_t *page = MALLOC(totalsz);
+  if (!page) {
+    return NULL;
   }
-  int totalsz = sizeof(pool_t) + N;
-  pool_t *pool = MALLOC(totalsz);
+  page->top = 0;
+  page->max = size;
+  page->next = NULL;
+  return page;
+}
+
+/**
+ *  Create an empty memory pool. Return the memory pool on success,
+ *  or NULL if out of memory. pool->small is always non-NULL: a
+ *  pool holds at least one small page for its whole lifetime.
+ */
+static pool_t *pool_create(void) {
+  pool_t *pool = MALLOC(sizeof(pool_t));
   if (!pool) {
     return NULL;
   }
-  memset(pool, 0, totalsz);
-  pool->max = N;
+  pool->small = page_create(PAGE_SMALL_SIZE);
+  if (!pool->small) {
+    FREE(pool);
+    return NULL;
+  }
+  pool->large = NULL;
   return pool;
 }
 
 /**
- *  Destroy a memory pool.
+ *  Destroy a memory pool, freeing every page in it.
  */
-static void pool_destroy(pool_t *pool) { FREE(pool); }
+static void pool_destroy(pool_t *pool) {
+  if (!pool) {
+    return;
+  }
+  for (page_t *p = pool->small; p;) {
+    page_t *next = p->next;
+    FREE(p);
+    p = next;
+  }
+  for (page_t *p = pool->large; p;) {
+    page_t *next = p->next;
+    FREE(p);
+    p = next;
+  }
+  FREE(pool);
+}
 
 /**
  *  Allocate n bytes from pool. Return the memory allocated on
  *  success, or NULL if out of memory.
  */
 static char *pool_alloc(pool_t *pool, int n) {
-  if (pool->top + n > pool->max) {
-    return NULL;
+  if (n > PAGE_LARGE_THRESHOLD) {
+    // Large alloc: own exactly-sized page, used once.
+    page_t *page = page_create(n);
+    if (!page) {
+      return NULL;
+    }
+    page->next = pool->large;
+    pool->large = page;
+    page->top = page->max;
+    return page->data;
   }
-  char *ret = pool->buf + pool->top;
-  pool->top += n;
+
+  if (pool->small->top + n > pool->small->max) {
+    // Current small page doesn't have room: abandon its leftover
+    // space and start a fresh one.
+    page_t *page = page_create(PAGE_SMALL_SIZE);
+    if (!page) {
+      return NULL;
+    }
+    page->next = pool->small;
+    pool->small = page;
+  }
+  char *ret = pool->small->data + pool->small->top;
+  pool->small->top += n;
   return ret;
 }
 
@@ -452,7 +521,7 @@ static void datum_free(toml_datum_t *datum) {
 
 // Maps each distinct source-name pointer to a single copy in the destination
 // pool (deduplicated), so the merged pool holds at most one copy of each source
-// name (keeping it within the r1pool->top + r2pool->top budget).
+// name.
 typedef struct srcmap_t srcmap_t;
 struct srcmap_t {
   pool_t *pool;
@@ -732,14 +801,10 @@ toml_result_t toml_merge(const toml_result_t *r1, const toml_result_t *r2) {
     reason = "param error: r2 not ok";
     goto bail;
   }
-  {
-    pool_t *r1pool = (pool_t *)r1->__internal;
-    pool_t *r2pool = (pool_t *)r2->__internal;
-    pool = pool_create(r1pool->top + r2pool->top);
-    if (!pool) {
-      reason = "out of memory";
-      goto bail;
-    }
+  pool = pool_create();
+  if (!pool) {
+    reason = "out of memory";
+    goto bail;
   }
   sm.pool = pool;
 
@@ -1007,9 +1072,9 @@ toml_result_t toml_parse_named(const char *src, int len, const char *name) {
   pp->ebuf.ptr = result.errmsg; // parse error will be printed into pp->ebuf
   pp->ebuf.len = sizeof(result.errmsg);
 
-  // Alloc memory pool (extra bytes for NUL term, safety, and the source name)
+  // Alloc memory pool
   int namelen = name ? (int)strlen(name) + 1 : 0;
-  pp->pool = pool_create(len + 10 + namelen);
+  pp->pool = pool_create();
   if (!pp->pool) {
     snprintf(result.errmsg, sizeof(result.errmsg), "out of memory");
     goto bail;
@@ -2028,7 +2093,7 @@ static int scan_multiline_string(scanner_t *sp, token_t *tok) {
     }
     // ch is backslash
     if (!escp) {
-      escp = sp->cur - 1;	/* mark the first esc position */
+      escp = sp->cur - 1; /* mark the first esc position */
       assert(*escp == '\\');
     }
 
