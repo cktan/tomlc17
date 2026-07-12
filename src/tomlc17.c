@@ -104,7 +104,10 @@ struct pool_t {
  *  NULL if out of memory.
  */
 static page_t *page_create(int size) {
-  int totalsz = sizeof(page_t) - 1 + size;
+  if (! (0 <= size && size <= (1 << 30))) { // [0..1GB]
+    return NULL;
+  }
+  size_t totalsz = (size_t)&((page_t *)0)->data[size];
   page_t *page = MALLOC(totalsz);
   if (!page) {
     return NULL;
