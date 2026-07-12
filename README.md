@@ -1,5 +1,10 @@
 # tomlc17
 
+[![C/C++ CI](https://github.com/cktan/tomlc17/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/cktan/tomlc17/actions/workflows/c-cpp.yml)
+[![Latest release](https://img.shields.io/github/v/tag/cktan/tomlc17?label=release)](https://github.com/cktan/tomlc17/tags)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![TOML v1.1](https://img.shields.io/badge/TOML-v1.1-9c4221.svg)](https://toml.io/en/v1.0.0)
+
 A lightweight, strictly compliant TOML v1.1 parser for C and C++.
 
 ## Overview
