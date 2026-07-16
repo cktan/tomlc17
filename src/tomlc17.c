@@ -221,7 +221,7 @@ static char *cell_realloc(char *p, int size) {
   }
 
   // obtain a handle to cell info
-  cell_t *cp = (cell_t *)(p - sizeof(cell_t));
+  cell_t *cp = (cell_t *)(void *)(p - sizeof(cell_t));
   if ((uint32_t)size <= cp->max) {
     // cell is big enough for the new size. DONE.
     cp->top = size;
@@ -242,7 +242,7 @@ static char *cell_realloc(char *p, int size) {
 
 static void cell_free(char *p) {
   if (p) {
-    cell_t *cp = (cell_t *)(p - sizeof(cell_t));
+    cell_t *cp = (cell_t *)(void *)(p - sizeof(cell_t));
     FREE(cp);
   }
 }
@@ -414,11 +414,11 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
   }
 
   {
-    char **pkey =
-        (char **)cell_realloc((char *)tab->u.tab.key, sizeof(*pkey) * (N + 1));
-    int *plen =
-        (int *)cell_realloc((char *)tab->u.tab.len, sizeof(*plen) * (N + 1));
-    toml_datum_t *value = (toml_datum_t *)cell_realloc(
+    char **pkey = (char **)(void *)cell_realloc((char *)tab->u.tab.key,
+                                                sizeof(*pkey) * (N + 1));
+    int *plen = (int *)(void *)cell_realloc((char *)tab->u.tab.len,
+                                            sizeof(*plen) * (N + 1));
+    toml_datum_t *value = (toml_datum_t *)(void *)cell_realloc(
         (char *)tab->u.tab.value, sizeof(*value) * (N + 1));
 
     // on success, must save new pointers in tab->u.tab because the
@@ -476,8 +476,8 @@ static toml_datum_t *arr_emplace(toml_datum_t *arr, const char **reason) {
     *reason = "array too large";
     return NULL;
   }
-  toml_datum_t *elem = (toml_datum_t *)cell_realloc((char *)arr->u.arr.elem,
-                                                    sizeof(*elem) * (n + 1));
+  toml_datum_t *elem = (toml_datum_t *)(void *)cell_realloc(
+      (char *)arr->u.arr.elem, sizeof(*elem) * (n + 1));
   if (!elem) {
     *reason = "out of memory";
     return NULL;
@@ -564,14 +564,14 @@ static const char *dedup_source(srcmap_t *m, const char *src) {
   // Grow the memo first, so an allocation failure aborts cleanly.
   if (m->n == m->cap) {
     int newcap = m->cap ? m->cap * 2 : 4;
-    const char **no =
-        (const char **)cell_realloc((char *)m->olds, sizeof(*no) * newcap);
+    const char **no = (const char **)(void *)cell_realloc(
+        (char *)m->olds, sizeof(*no) * newcap);
     if (!no) {
       return NULL; // out of memory
     }
     m->olds = no;
-    const char **nn =
-        (const char **)cell_realloc((char *)m->news, sizeof(*nn) * newcap);
+    const char **nn = (const char **)(void *)cell_realloc(
+        (char *)m->news, sizeof(*nn) * newcap);
     if (!nn) {
       return NULL; // out of memory
     }
