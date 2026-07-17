@@ -200,7 +200,7 @@ TOML_EXTERN toml_datum_t toml_get(toml_datum_t table, const char *key);
  *
  * @param table The TOML table to start the search from.
  * @param multipart_key A dot-separated key string. No escape characters
- * allowed. Maximum length is 255 bytes.
+ * allowed.
  * @return The value found, or a datum with type TOML_UNKNOWN if not found.
  */
 TOML_EXTERN toml_datum_t toml_seek(toml_datum_t table,
