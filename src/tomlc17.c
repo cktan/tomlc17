@@ -695,7 +695,7 @@ static int datum_merge(toml_datum_t *dst, toml_datum_t src, srcmap_t *sm,
     }
     return 0;
   case TOML_ARRAY:
-    if (is_array_of_tables(src)) {
+    if (is_array_of_tables(*dst) && is_array_of_tables(src)) {
       // append src array to dst
       for (int i = 0; i < src.u.arr.size; i++) {
         toml_datum_t *pelem = arr_emplace(dst, reason);

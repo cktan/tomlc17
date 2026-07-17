@@ -142,6 +142,30 @@ static void test_array_of_tables() {
   check(doc1, doc2, expected);
 }
 
+// A plain array overridden by an array of tables must be fully replaced,
+// not have table elements appended onto the plain values.
+static void test_plain_array_overridden_by_array_of_tables() {
+  printf("Running test_plain_array_overridden_by_array_of_tables...\n");
+  const char *doc1 = "arr = [1, 2, 3]";
+  const char *doc2 = "[[arr]]\n"
+                     "x = 1";
+  const char *expected = "[[arr]]\n"
+                         "x = 1";
+  check(doc1, doc2, expected);
+}
+
+// The reverse direction: an array of tables overridden by a plain array
+// must also be fully replaced, not have plain values appended onto the
+// table elements.
+static void test_array_of_tables_overridden_by_plain_array() {
+  printf("Running test_array_of_tables_overridden_by_plain_array...\n");
+  const char *doc1 = "[[arr]]\n"
+                     "x = 1";
+  const char *doc2 = "arr = [9, 8]";
+  const char *expected = "arr = [9, 8]";
+  check(doc1, doc2, expected);
+}
+
 static void test_type_conflicts() {
   printf("Running test_type_conflicts...\n");
   const char *doc1 = "value = 42";
@@ -191,6 +215,8 @@ int main() {
   test_deep_merge();
   test_complex_merge();
   test_array_of_tables();
+  test_plain_array_overridden_by_array_of_tables();
+  test_array_of_tables_overridden_by_plain_array();
   test_type_conflicts();
   test_empty_documents();
   test_keys_outlive_inputs();
