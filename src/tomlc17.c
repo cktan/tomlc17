@@ -104,10 +104,10 @@ struct pool_t {
  *  NULL if out of memory.
  */
 static page_t *page_create(int size) {
-  if (! (0 <= size && size <= (1 << 30))) { // [0..1GB]
+  if (!(0 <= size && size <= (1 << 30))) { // [0..1GB]
     return NULL;
   }
-  size_t totalsz = (size_t)&((page_t *)0)->data[size];
+  size_t totalsz = (size_t) & ((page_t *)0)->data[size];
   page_t *page = MALLOC(totalsz);
   if (!page) {
     return NULL;
@@ -414,8 +414,8 @@ static toml_datum_t *tab_emplace(toml_datum_t *tab, span_t key,
   }
 
   {
-    char **pkey = (char **)cell_realloc((char *)(void *)tab->u.tab.key,
-                                        sizeof(*pkey) * (N + 1));
+    char **pkey =
+        (char **)cell_realloc((char *)tab->u.tab.key, sizeof(*pkey) * (N + 1));
     int *plen =
         (int *)cell_realloc((char *)tab->u.tab.len, sizeof(*plen) * (N + 1));
     toml_datum_t *value = (toml_datum_t *)cell_realloc(
@@ -564,14 +564,14 @@ static const char *dedup_source(srcmap_t *m, const char *src) {
   // Grow the memo first, so an allocation failure aborts cleanly.
   if (m->n == m->cap) {
     int newcap = m->cap ? m->cap * 2 : 4;
-    const char **no = (const char **)cell_realloc((char *)(void *)m->olds,
-                                                  sizeof(*no) * newcap);
+    const char **no =
+        (const char **)cell_realloc((char *)m->olds, sizeof(*no) * newcap);
     if (!no) {
       return NULL; // out of memory
     }
     m->olds = no;
-    const char **nn = (const char **)cell_realloc((char *)(void *)m->news,
-                                                  sizeof(*nn) * newcap);
+    const char **nn =
+        (const char **)cell_realloc((char *)m->news, sizeof(*nn) * newcap);
     if (!nn) {
       return NULL; // out of memory
     }
