@@ -239,7 +239,6 @@ Look up a dot-separated key path starting from `table`. For example,
 
 Constraints:
 - Keys must not contain escape characters.
-- The total length of `multipart_key` must not exceed 255 bytes.
 
 Returns a datum with `type == TOML_UNKNOWN` if any component is not found.
 

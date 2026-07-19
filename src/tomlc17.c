@@ -28,17 +28,6 @@ static toml_option_t toml_option = {0, realloc, free};
   else                                                                         \
     (void)0
 
-// Copy string src to dst where dst is limited to dstsz that includes
-// NUL. Return 0 on success, -1 otherwise (because src[] is longer than dst[]).
-static inline int copystring(char *dst, int dstsz, const char *src) {
-  int srcsz = strlen(src) + 1;
-  if (srcsz > dstsz) {
-    return -1;
-  }
-  memcpy(dst, src, srcsz);
-  return 0;
-}
-
 /*
  *  Error buffer
  */
@@ -388,6 +377,13 @@ static int tab_find(toml_datum_t *tab, span_t key) {
     }
   }
   return -1;
+}
+
+// Find key in tab and return its value. If not found, return DATUM_ZERO.
+static inline toml_datum_t tab_find_item(toml_datum_t *tab, span_t key) {
+    assert(tab->type == TOML_TABLE);
+    int idx = tab_find(tab, key);
+    return idx >= 0 ? tab->u.tab.value[idx] : DATUM_ZERO;
 }
 
 // Put key into tab dictionary. Return a pointer to the datum for the key.
@@ -863,19 +859,8 @@ bool toml_equiv(const toml_result_t *r1, const toml_result_t *r2) {
  * or a TOML_UNKNOWN otherwise.
  */
 toml_datum_t toml_get(toml_datum_t datum, const char *key) {
-  if (datum.type == TOML_TABLE) {
-    int n = datum.u.tab.size;
-    if (n > 0) {
-      int key_len = strlen(key);
-      const char **pkey = datum.u.tab.key;
-      int *plen = datum.u.tab.len;
-      toml_datum_t *pvalue = datum.u.tab.value;
-      for (int i = 0; i < n; i++) {
-        if (plen[i] == key_len && 0 == memcmp(pkey[i], key, key_len)) {
-          return pvalue[i];
-        }
-      }
-    }
+  if (datum.type == TOML_TABLE && datum.u.tab.size > 0) {
+    return tab_find_item(&datum, (span_t) {key, strlen(key)});
   }
   return DATUM_ZERO;
 }
@@ -892,30 +877,21 @@ toml_datum_t toml_seek(toml_datum_t table, const char *multipart_key) {
     return DATUM_ZERO;
   }
 
-  // Make a mutable copy of the multipart_key for splitting
-  char buf[256];
-  if (copystring(buf, sizeof(buf), multipart_key)) {
-    // if the multipart_key is longer than buffer, just
-    // signal a not-found.
-    return DATUM_ZERO;
-  }
-
   // Go through the multipart name part by part.
-  char *p = buf;
+  const char *p = multipart_key;
   toml_datum_t datum = table;
-  while (datum.type == TOML_TABLE) {
+  while (datum.type == TOML_TABLE && datum.u.tab.size > 0) {
     char *q = strchr(p, '.');
     if (q) {
       // traverse to next key
-      *q = 0;
-      datum = toml_get(datum, p);
+      datum = tab_find_item(&datum, (span_t) {p, q - p});
       p = q + 1;
       continue;
     }
 
     // At end of last keypart.
     // look up p in the final table
-    return toml_get(datum, p);
+    return tab_find_item(&datum, (span_t) {p, strlen(p)});
   }
 
   return DATUM_ZERO;
