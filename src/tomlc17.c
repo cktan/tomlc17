@@ -2297,7 +2297,7 @@ static bool is_valid_time(int hour, int minute, int sec, int usec) {
   if (!(0 <= minute && minute <= 59)) {
     return false;
   }
-  if (!(0 <= sec && sec <= 59)) {
+  if (!(0 <= sec && sec <= 60)) { // 60 permitted for leap seconds (RFC 3339)
     return false;
   }
   if (!(0 <= usec)) {

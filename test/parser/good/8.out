@@ -8,5 +8,7 @@
   "ld1": {"type": "date-local", "value": "1979-05-27"},
   "lt1": {"type": "time-local", "value": "07:32:00"},
   "lt2": {"type": "time-local", "value": "00:32:00.999"},
-  "lower": {"type": "datetime", "value": "1987-07-05 17:45:00+00:00"}
+  "lower": {"type": "datetime", "value": "1987-07-05 17:45:00+00:00"},
+  "leap1": {"type": "time-local", "value": "23:59:60"},
+  "leap2": {"type": "datetime", "value": "1990-12-31 23:59:60+00:00"}
 }
