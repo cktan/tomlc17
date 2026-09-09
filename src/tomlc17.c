@@ -665,9 +665,13 @@ bail:
   return -1;
 }
 
-// Check if datum is an array of tables.
+// Check if datum is an array of tables. An empty array is deliberately
+// excluded: it has no elements to type-check, so treating it as an array
+// of tables here would be true only vacuously, and datum_merge's caller
+// relies on this to distinguish "override with an empty array" from
+// "append zero table elements" (see below).
 static inline bool is_array_of_tables(toml_datum_t datum) {
-  bool ret = (datum.type == TOML_ARRAY);
+  bool ret = (datum.type == TOML_ARRAY) && (datum.u.arr.size > 0);
   for (int i = 0; ret && i < datum.u.arr.size; i++) {
     ret = (datum.u.arr.elem[i].type == TOML_TABLE);
   }

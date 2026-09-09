@@ -166,6 +166,33 @@ static void test_array_of_tables_overridden_by_plain_array() {
   check(doc1, doc2, expected);
 }
 
+// An array of tables overridden by an empty array must be replaced with
+// the empty array, not left untouched. is_array_of_tables() used to treat
+// an empty array as vacuously true (no elements fail the table check), so
+// merging in an empty array hit the append branch instead of the override
+// branch and appended zero elements onto the untouched destination.
+static void test_array_of_tables_overridden_by_empty_array() {
+  printf("Running test_array_of_tables_overridden_by_empty_array...\n");
+  const char *doc1 = "[[arr]]\n"
+                     "x = 1";
+  const char *doc2 = "arr = []";
+  const char *expected = "arr = []";
+  check(doc1, doc2, expected);
+}
+
+// The reverse direction, for completeness: an empty array overridden by a
+// real array of tables must end up with the array of tables, whether the
+// merge takes the append path or the override path.
+static void test_empty_array_overridden_by_array_of_tables() {
+  printf("Running test_empty_array_overridden_by_array_of_tables...\n");
+  const char *doc1 = "arr = []";
+  const char *doc2 = "[[arr]]\n"
+                     "x = 1";
+  const char *expected = "[[arr]]\n"
+                         "x = 1";
+  check(doc1, doc2, expected);
+}
+
 static void test_type_conflicts() {
   printf("Running test_type_conflicts...\n");
   const char *doc1 = "value = 42";
@@ -217,6 +244,8 @@ int main() {
   test_array_of_tables();
   test_plain_array_overridden_by_array_of_tables();
   test_array_of_tables_overridden_by_plain_array();
+  test_array_of_tables_overridden_by_empty_array();
+  test_empty_array_overridden_by_array_of_tables();
   test_type_conflicts();
   test_empty_documents();
   test_keys_outlive_inputs();
