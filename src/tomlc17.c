@@ -2677,8 +2677,17 @@ static int scan_float(scanner_t *sp, token_t *tok) {
   char *q;
   double fp64 = strtod(buffer, &q);
   // glibc sets ERANGE on underflow even when strtod's result is correctly
-  // rounded, e.g. 5e-324; allow acceptance of such subnormal results.
-  int is_ok_subnormal = (errno == ERANGE) && fp64 != 0.0 && isfinite(fp64);
+  // rounded, e.g. 5e-324; accept such results, but still reject a value that
+  // underflowed to zero or overflowed to infinity. Test the raw bits rather
+  // than "fp64 != 0.0" and isfinite(): if the calling program enables
+  // denormals-are-zero (e.g. an app linked with -ffast-math, or built with
+  // Intel icx), an FP compare reads a subnormal as 0.0 (issue #49).
+  static_assert(sizeof(fp64) == sizeof(uint64_t), "double must be 64 bits");
+  uint64_t fp64_bits;
+  memcpy(&fp64_bits, &fp64, sizeof(fp64));
+  uint64_t fp64_mag = fp64_bits & 0x7fffffffffffffffULL; // drop the sign bit
+  int is_ok_subnormal =
+      (errno == ERANGE) && fp64_mag != 0 && fp64_mag < 0x7ff0000000000000ULL;
   if ((errno && !is_ok_subnormal) || *q || q == buffer) {
     return SETERROR(sp->ebuf, lineno, "error parsing float");
   }
