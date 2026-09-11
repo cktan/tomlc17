@@ -2315,6 +2315,7 @@ static bool is_valid_time(int hour, int minute, int sec, int usec) {
   if (!(0 <= minute && minute <= 59)) {
     return false;
   }
+  // RFC 3339 permits sec == 60 for leap seconds; reject it deliberately.
   if (!(0 <= sec && sec <= 59)) {
     return false;
   }

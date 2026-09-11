@@ -1,0 +1,2 @@
+# leap second (RFC 3339 allows :60) is deliberately rejected
+dt = 1990-12-31T23:59:60Z
