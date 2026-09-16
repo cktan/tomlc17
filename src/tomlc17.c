@@ -272,6 +272,15 @@ static int ucs_to_utf8(uint32_t code, char buf[4]);
 #define TABLE_MAX (1 << 14) // 16k
 #define ARRAY_MAX (1 << 14) // 16k
 
+// Buffer size for scanning a number or a timestamp. TOML does not limit the
+// length of either literal; tomlc17 does, like the limits above: a literal that
+// fills the buffer is rejected as too long, so LITBUF_SIZE - 2 bytes is the
+// longest one accepted. That accommodates "9_007_199_254_740_991.0",
+// picosecond-precision timestamps, and every other spelling of ordinary length.
+// The checks test the length of the literal itself, not of the copy, because
+// scan_copystr() also copies whatever follows the literal.
+#define LITBUF_SIZE 120
+
 enum toktyp_t {
   TOK_DOT = 1,
   TOK_EQUAL,
@@ -2461,7 +2470,7 @@ static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
 // Scan hh:mm:ss.xxxxx
 static int scan_time(scanner_t *sp, token_t *tok) {
   int lineno = sp->lineno;
-  char buffer[20];
+  char buffer[LITBUF_SIZE];
   scan_copystr(sp, buffer, sizeof(buffer));
 
   char *p = buffer;
@@ -2469,6 +2478,9 @@ static int scan_time(scanner_t *sp, token_t *tok) {
   int len = read_time(p, &hour, &minute, &sec, &usec);
   if (len == 0) {
     return SETERROR(sp->ebuf, lineno, "invalid time");
+  }
+  if (len + 1 >= (int)sizeof(buffer)) {
+    return SETERROR(sp->ebuf, lineno, "timestamp too long");
   }
   if (!is_valid_time(hour, minute, sec, usec)) {
     return SETERROR(sp->ebuf, lineno, "invalid time");
@@ -2495,7 +2507,7 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
 
   int n;
   // make a copy of sp->cur into buffer to ensure NUL terminated string
-  char buffer[80];
+  char buffer[LITBUF_SIZE];
   scan_copystr(sp, buffer, sizeof(buffer));
 
   toktyp_t toktyp = TOK_FIN;
@@ -2558,6 +2570,9 @@ static int scan_timestamp(scanner_t *sp, token_t *tok) {
 done:
   *tok = mktoken(sp, toktyp);
   n = p - buffer;
+  if (n + 1 >= (int)sizeof(buffer)) {
+    return SETERROR(sp->ebuf, lineno, "timestamp too long");
+  }
   tok->str.len = n;
   sp->cur += n;
 
@@ -2655,7 +2670,7 @@ static int process_numstr(char *buffer, int base, const char **reason) {
 }
 
 static int scan_float(scanner_t *sp, token_t *tok) {
-  char buffer[50]; // need to accommodate "9_007_199_254_740_991.0"
+  char buffer[LITBUF_SIZE];
   scan_copystr(sp, buffer, sizeof(buffer));
 
   int lineno = sp->lineno;
@@ -2667,6 +2682,9 @@ static int scan_float(scanner_t *sp, token_t *tok) {
     p += strspn(p, "_0123456789eE.+-");
   }
   int len = p - buffer;
+  if (len + 1 >= (int)sizeof(buffer)) {
+    return SETERROR(sp->ebuf, lineno, "number too long");
+  }
   buffer[len] = 0;
 
   const char *reason;
@@ -2702,7 +2720,7 @@ static int scan_float(scanner_t *sp, token_t *tok) {
 
 static int scan_number(scanner_t *sp, token_t *tok) {
   const char *reason;
-  char buffer[50]; // need to accommodate "9_007_199_254_740_991.0"
+  char buffer[LITBUF_SIZE];
   scan_copystr(sp, buffer, sizeof(buffer));
 
   char *p = buffer;
@@ -2729,6 +2747,9 @@ static int scan_number(scanner_t *sp, token_t *tok) {
       p += 2;
       p += strspn(p, span);
       int len = p - buffer;
+      if (len + 1 >= (int)sizeof(buffer)) {
+        return SETERROR(sp->ebuf, lineno, "number too long");
+      }
       buffer[len] = 0;
 
       if (process_numstr(buffer + 2, base, &reason)) {
@@ -2761,6 +2782,9 @@ static int scan_number(scanner_t *sp, token_t *tok) {
   p = buffer;
   p += strspn(p, "0123456789_+-.eE");
   int len = p - buffer;
+  if (len + 1 >= (int)sizeof(buffer)) {
+    return SETERROR(sp->ebuf, lineno, "number too long");
+  }
   buffer[len] = 0;
 
   if (process_numstr(buffer, 10, &reason)) {
