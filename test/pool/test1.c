@@ -170,11 +170,10 @@ static void test_custom_allocator() {
   opt.mem_free = test_free;
   toml_set_option(opt);
 
-  const char *doc =
-      "[server]\n"
-      "host = \"localhost\"\n"
-      "port = 8080\n"
-      "clients = [\"a\", \"b\", \"c\"]\n";
+  const char *doc = "[server]\n"
+                    "host = \"localhost\"\n"
+                    "port = 8080\n"
+                    "clients = [\"a\", \"b\", \"c\"]\n";
   toml_result_t r = toml_parse(doc, (int)strlen(doc));
   CHECK(r.ok);
   CHECK(g_realloc_count > 0);

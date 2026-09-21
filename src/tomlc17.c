@@ -107,7 +107,7 @@ static page_t *page_create(int size) {
   if (!(0 <= size && size <= (1 << 30))) { // [0..1GB]
     return NULL;
   }
-  size_t totalsz = (size_t) & ((page_t *)0)->data[size];
+  size_t totalsz = (size_t)&((page_t *)0)->data[size];
   page_t *page = MALLOC(totalsz);
   if (!page) {
     return NULL;
