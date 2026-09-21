@@ -21,10 +21,6 @@ This is useful when you need to:
 // Custom realloc function
 void* my_realloc(void *ptr, size_t size) {
   // Your custom allocation logic here
-  if (size == 0) {
-    free(ptr);
-    return NULL;
-  }
   return realloc(ptr, size);
 }
 
@@ -59,11 +55,9 @@ int main() {
   any parsing operations.
 - **Thread Safety:** `toml_set_option()` is not thread-safe. Set options only during 
   initialization in a single-threaded context.
-- **Custom Allocator Requirements:** Your custom `mem_realloc` function should behave 
-  like standard `realloc()`:
-  - When `size > 0`: allocate or resize memory, return pointer or NULL on failure
-  - When `size == 0`: free memory and return NULL
-  - Your custom `mem_free` function should handle NULL pointers gracefully
+- **Custom Allocator Requirements:**
+  - `mem_realloc`: Called with `size > 0` to allocate (when `ptr == NULL`) or resize (when `ptr != NULL`) memory. Returns a pointer to the allocated memory, or `NULL` on failure. `tomlc17` never passes `size == 0`.
+  - `mem_free`: Called to free memory previously allocated by `mem_realloc`. Must handle `NULL` pointers gracefully.
 
 For more details, see the [`toml_set_option()` documentation](API.md#toml_set_option) 
 in API.md.

@@ -142,6 +142,49 @@ static void test_parse_uses_pool() {
   toml_free(r);
 }
 
+static int g_realloc_count = 0;
+static int g_free_count = 0;
+
+static void *test_realloc(void *ptr, size_t size) {
+  // Verify size > 0: tomlc17 must never call mem_realloc with size == 0
+  CHECK(size > 0);
+  g_realloc_count++;
+  return realloc(ptr, size);
+}
+
+static void test_free(void *ptr) {
+  if (ptr) {
+    g_free_count++;
+  }
+  free(ptr);
+}
+
+static void test_custom_allocator() {
+  printf("Running test_custom_allocator...\n");
+  g_realloc_count = 0;
+  g_free_count = 0;
+
+  toml_option_t orig_opt = toml_default_option();
+  toml_option_t opt = orig_opt;
+  opt.mem_realloc = test_realloc;
+  opt.mem_free = test_free;
+  toml_set_option(opt);
+
+  const char *doc =
+      "[server]\n"
+      "host = \"localhost\"\n"
+      "port = 8080\n"
+      "clients = [\"a\", \"b\", \"c\"]\n";
+  toml_result_t r = toml_parse(doc, (int)strlen(doc));
+  CHECK(r.ok);
+  CHECK(g_realloc_count > 0);
+  toml_free(r);
+  CHECK(g_free_count > 0);
+
+  // Restore options
+  toml_set_option(orig_opt);
+}
+
 int main() {
   test_create();
   test_small_alloc_no_growth();
@@ -150,6 +193,7 @@ int main() {
   test_small_page_growth();
   test_multiple_large_allocs();
   test_parse_uses_pool();
+  test_custom_allocator();
   printf("All tests completed.\n");
   return 0;
 }
