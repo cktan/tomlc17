@@ -127,6 +127,34 @@ static void test_multiple_large_allocs() {
   pool_destroy(pool);
 }
 
+static bool realloc_was_called;
+
+static void *rejecting_realloc(void *ptr, size_t size) {
+  (void)ptr;
+  (void)size;
+  realloc_was_called = true;
+  return NULL;
+}
+
+// Growing a cell beyond the representable capacity fails before invoking the
+// allocator or converting the capacity to int.
+static void test_cell_growth_overflow() {
+  printf("Running test_cell_growth_overflow...\n");
+  cell_t cell = {.top = 1, .max = 1};
+  toml_option_t saved_option = toml_option;
+  toml_option.mem_realloc = rejecting_realloc;
+  realloc_was_called = false;
+
+  CHECK(cell_realloc((char *)(&cell + 1), 1651910421) == NULL);
+  CHECK(realloc_was_called);
+
+  realloc_was_called = false;
+  CHECK(cell_realloc((char *)(&cell + 1), 1651910422) == NULL);
+  CHECK(!realloc_was_called);
+
+  toml_option = saved_option;
+}
+
 // End-to-end: a real parse exercises pool_alloc through parse_norm /
 // dedup_source and must not corrupt the pool's magic.
 static void test_parse_uses_pool() {
@@ -191,6 +219,7 @@ int main() {
   test_boundary_goes_large();
   test_small_page_growth();
   test_multiple_large_allocs();
+  test_cell_growth_overflow();
   test_parse_uses_pool();
   test_custom_allocator();
   printf("All tests completed.\n");

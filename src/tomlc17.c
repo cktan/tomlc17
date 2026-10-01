@@ -229,7 +229,11 @@ static char *cell_realloc(char *p, int size) {
   }
 
   // need to expand. add 30% margin.
-  int newmax = size * 1.3 + 100;
+  int64_t newmax_value = (int64_t)size * 13 / 10 + 100;
+  if (newmax_value > INT_MAX) {
+    return 0; // requested capacity cannot be represented
+  }
+  int newmax = (int)newmax_value;
   cell_t *tmp = REALLOC(cp, newmax + sizeof(cell_t));
   if (!tmp) {
     return 0; // out of memory
