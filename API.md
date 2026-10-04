@@ -165,6 +165,8 @@ toml_result_t toml_parse_file(FILE *fp);
 Parse a TOML document from an open file handle. The caller is responsible for
 calling `fclose(fp)`. The result must be released with `toml_free()`.
 
+Files of 1GB or larger are rejected with a `file is too big` error.
+
 ---
 
 ### `toml_parse_file_ex`
@@ -176,6 +178,8 @@ toml_result_t toml_parse_file_ex(const char *fname);
 Parse a TOML document from a file path. Opens and closes the file internally.
 Every parsed datum's `source` is set to `fname`. The result must be released
 with `toml_free()`.
+
+Files of 1GB or larger are rejected with a `file is too big` error.
 
 ---
 
