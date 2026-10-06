@@ -29,6 +29,25 @@ jobs:
       run: make install prefix=./tmp
 
 
+  # -Wcast-align is not implied by -Wall or -Wextra, and gcc's plain
+  # -Wcast-align is a no-op on x86-64: gcc only reports it on targets that
+  # actually require the stricter alignment.  That is why this warning is
+  # invisible from an ordinary `cc -Wcast-align` build on an x86-64 Ubuntu
+  # box, and visible to anyone whose `cc` is clang.  To see it on x86-64,
+  # gcc needs -Wcast-align=strict; clang reports it on any target.
+  #
+  # Both spellings are run here so the warning is reproducible on either
+  # compiler rather than depending on which one `cc` happens to be.
+  cast-align:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: gcc -Wcast-align=strict
+      run: gcc -std=c17 -Wall -Wextra -Wcast-align=strict -Werror -c src/tomlc17.c -o /dev/null
+    - name: clang -Wcast-align
+      run: clang -std=c17 -Wall -Wextra -Wcast-align -Werror -c src/tomlc17.c -o /dev/null
+
   build-macos:
     runs-on: macos-latest
   
