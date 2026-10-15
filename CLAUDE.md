@@ -88,4 +88,5 @@ questions come before implementation rather than after mistakes.
 
 - Always run `make format` and `make clean test` before git commit.
 - Always use `git merge --squash` when merging.
-
+- when writing git commit messages, use concise sentences and
+  bullet points.`
