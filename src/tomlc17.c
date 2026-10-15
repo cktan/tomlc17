@@ -15,6 +15,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+// static_assert is C11; provide a fallback for C99 (issue #58).
+#if !defined(__cplusplus) &&                                                   \
+    (!defined(__STDC_VERSION__) || (__STDC_VERSION__ < 201112L))
+#undef static_assert
+#define TOML_CAT_(a, b) a##b
+#define TOML_CAT(a, b) TOML_CAT_(a, b)
+#define static_assert(cond, msg)                                               \
+  enum { TOML_CAT(toml_static_assert_, __LINE__) = 1 / (int)(!!(cond)) }
+#endif
+
 const toml_datum_t DATUM_ZERO = {0};
 
 static toml_option_t toml_option = {0, realloc, free};

@@ -29,6 +29,18 @@ jobs:
       run: make install prefix=./tmp
 
 
+  build-c99:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: compile with -std=c99
+      run: ${{ matrix.cc }} -std=c99 -Wall -Wextra -pedantic -Werror -c src/tomlc17.c -o /dev/null
+
+
   build-macos:
     runs-on: macos-latest
   
