@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <locale.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -2704,6 +2705,23 @@ static int scan_float(scanner_t *sp, token_t *tok) {
   const char *reason;
   if (process_numstr(buffer, 10, &reason)) {
     return SETERROR(sp->ebuf, lineno, "%s", reason);
+  }
+
+  // strtod() honors LC_NUMERIC, but TOML always uses '.'; substitute the
+  // locale's decimal point, which may be multi-byte (issue #57).
+  // No-op in the "C" locale. Literals without '.' (1e3, inf, nan) skip this.
+  char *dot = strchr(buffer, '.');
+  const char *dp = localeconv()->decimal_point; // never empty per C std
+  if (dot && 0 != strcmp(dp, ".")) {
+    size_t dplen = strlen(dp);
+    // Result is strlen(buffer) - 1 + dplen bytes plus NUL; ensure it fits.
+    if (strlen(buffer) + dplen > sizeof(buffer)) {
+      return SETERROR(sp->ebuf, lineno, "number too long");
+    }
+    // Shift the tail (including NUL) to make room, then write dp over '.'.
+    // Regions overlap, hence memmove.
+    memmove(dot + dplen, dot + 1, strlen(dot + 1) + 1);
+    memcpy(dot, dp, dplen);
   }
 
   errno = 0;
