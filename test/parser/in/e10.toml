@@ -1,0 +1,3 @@
+# cannot extend inline table a with [table]
+a = {}
+[a.b.c]

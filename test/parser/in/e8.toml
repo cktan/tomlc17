@@ -1,0 +1,2 @@
+# cannot extend inline table b using dotted key
+a = {b = {}, b.c.d = 1}

@@ -1,0 +1,4 @@
+# sub-tables may be added to a table defined by dotted keys
+[a]
+b.c = 1
+[a.b.d]

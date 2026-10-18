@@ -1,0 +1,5 @@
+# issue #59: a.b was defined by dotted key b.d
+[a.b.c]
+[a]
+b.d = 1
+[a.b]

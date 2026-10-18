@@ -1,0 +1,5 @@
+# a.b is implicitly created by [a.b.c], then defined by dotted keys
+[a.b.c]
+[a]
+b.d = 1
+b.e = 2

@@ -1349,6 +1349,11 @@ static toml_datum_t *descend_keypart(parser_t *pp, int lineno, int colno,
 
   for (int i = 0; i < keypart->nspan; i++) {
     const char *reason;
+    // Cannot descend into an inline table.
+    if (tab->flag & TOML_FLAG_INLINED) {
+      SETERROR(pp->ebuf, lineno, "inline table cannot be extended");
+      return NULL;
+    }
     // Find the i-th keypart
     int j = tab_find(tab, keypart->span[i]);
     // Not found: add a new (key, tab) pair.
@@ -1802,6 +1807,16 @@ static int parse_keyvalue_expr(parser_t *pp, token_t tok) {
     }
     toml_datum_t *value = &tab->u.tab.value[j];
     if (value->type == TOML_TABLE) {
+      if (value->flag & TOML_FLAG_INLINED) {
+        return SETERROR(pp->ebuf, keylineno, "inline table cannot be extended");
+      }
+      if (value->flag & TOML_FLAG_EXPLICIT) {
+        return SETERROR(pp->ebuf, keylineno,
+                        "cannot extend a previously defined table using "
+                        "dotted expression");
+      }
+      // Now defined by dotted keys: a later [table] header must fail.
+      value->flag &= ~TOML_FLAG_STDEXPR;
       tab = value;
       continue;
     }

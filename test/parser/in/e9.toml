@@ -1,0 +1,3 @@
+# cannot extend inline table a.b using dotted key
+a = {b = {}}
+a.b.c.d = 1

@@ -1,0 +1,11 @@
+{
+  "a": {
+    "b": {
+      "c": {
+
+      },
+      "d": {"type": "integer", "value": "1"},
+      "e": {"type": "integer", "value": "2"}
+    }
+  }
+}

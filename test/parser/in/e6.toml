@@ -1,0 +1,5 @@
+# issue #59: dotted key extends a.b, which was defined by [a.b]
+[a.b]
+c.d = 1
+[a]
+b.c.e = 2
