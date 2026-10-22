@@ -3168,6 +3168,9 @@ static int utf8_to_ucs(const char *orig, int len, uint32_t *ret) {
         return -1;
       v = (v << 6) | (i & 0x3f);
     }
+    if (v < 0x80) {
+      return -1; // overlong encoding
+    }
     return *ret = v, (const char *)buf - orig;
   }
 
@@ -3184,10 +3187,13 @@ static int utf8_to_ucs(const char *orig, int len, uint32_t *ret) {
         return -1;
       v = (v << 6) | (i & 0x3f);
     }
+    if (v < 0x800) {
+      return -1; // overlong encoding
+    }
     return *ret = v, (const char *)buf - orig;
   }
 
-  /* 0x00010000 - 0x001FFFFF:
+  /* 0x00010000 - 0x0010FFFF:
      11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
   */
   if (0x1E == (i >> 3)) {
@@ -3199,6 +3205,12 @@ static int utf8_to_ucs(const char *orig, int len, uint32_t *ret) {
       if (0x2 != (i >> 6))
         return -1;
       v = (v << 6) | (i & 0x3f);
+    }
+    // Reject overlong forms and anything above the last Unicode scalar
+    // value. This also rejects the 0xF5..0xF7 lead bytes, which can only
+    // encode code points past U+10FFFF.
+    if (v < 0x10000 || v > 0x10FFFF) {
+      return -1;
     }
     return *ret = v, (const char *)buf - orig;
   }
@@ -3293,10 +3305,10 @@ static int ucs_to_utf8(uint32_t code, char buf[4]) {
     return 3;
   }
 
-  /* 0x00010000 - 0x001FFFFF:
+  /* 0x00010000 - 0x0010FFFF:
      11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
   */
-  if (code <= 0x001FFFFF) {
+  if (code <= 0x0010FFFF) {
     buf[0] = (unsigned char)(0xf0 | (code >> 18));
     buf[1] = (unsigned char)(0x80 | ((code >> 12) & 0x3f));
     buf[2] = (unsigned char)(0x80 | ((code >> 6) & 0x3f));
