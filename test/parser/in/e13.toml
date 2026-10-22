@@ -1,0 +1,2 @@
+# Unicode escapes must not exceed U+10FFFF.
+a = "\U00110000"
