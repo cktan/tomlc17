@@ -3,7 +3,7 @@
 prefix ?= /usr/local
 # remove trailing /
 override prefix := $(prefix:%/=%)
-DIRS := src simple test
+DIRS := src simple test compat/tomlc99
 
 BUILDDIRS := $(DIRS:%=build-%)
 CLEANDIRS := $(DIRS:%=clean-%)
