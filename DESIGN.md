@@ -12,6 +12,12 @@ structural changes to the parser, scanner, or memory model.
 - `src/tomlc17.c` — the entire implementation, single translation
   unit, ~3200 lines. Everything below lives here and is `static`
   unless noted.
+- `compat/tomlc99/` — tomlc99's API on top of tomlc17. `toml.c`
+  `#include`s `tomlc17.c` with tomlc17's public names renamed to
+  `toml17_*` (both APIs define `toml_parse`, `toml_free`,
+  `toml_datum_t`), and builds a small mirror tree after parsing to
+  supply what tomlc99 exposes but tomlc17's tree lacks (a node's own
+  key, entries grouped as key-values/arrays/tables).
 
 The library has no build-time configuration and no dependencies
 beyond the C standard library. A parse (or merge) produces one

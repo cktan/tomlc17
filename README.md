@@ -149,6 +149,16 @@ unset DEBUG
 make clean install prefix=/usr/local
 ```
 
+## Migrating from tomlc99
+
+> **EXPERIMENTAL:** the tomlc99 compatibility layer is new and has not
+> yet been used in production. Its API and behavior may change. Test
+> your application thoroughly before relying on it.
+
+`compat/tomlc99` provides tomlc99's API on top of tomlc17, so tomlc99
+code can switch by relinking. See
+[`compat/tomlc99/README.md`](compat/tomlc99/README.md).
+
 ## Options
 
 For information on configuring library options, such as setting custom memory 
