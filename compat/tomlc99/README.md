@@ -1,8 +1,10 @@
 # tomlc99 compatibility layer
 
-> **EXPERIMENTAL:** this layer is new and has not yet been used in
-> production. Its API and behavior may change. Test your application
-> thoroughly before relying on it.
+> **EXPERIMENTAL AND DISCOURAGED:** this layer is new and has not yet
+> been used in production. Its API and behavior may change. Its use is
+> discouraged: port your code to tomlc17's native API instead. Use this
+> layer only as a temporary stopgap while you migrate, and test your
+> application thoroughly if you do.
 
 A drop-in replacement for [tomlc99](https://github.com/cktan/tomlc99),
 built on tomlc17. Code written against tomlc99 keeps its

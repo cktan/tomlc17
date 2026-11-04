@@ -151,9 +151,11 @@ make clean install prefix=/usr/local
 
 ## Migrating from tomlc99
 
-> **EXPERIMENTAL:** the tomlc99 compatibility layer is new and has not
-> yet been used in production. Its API and behavior may change. Test
-> your application thoroughly before relying on it.
+> **EXPERIMENTAL AND DISCOURAGED:** the tomlc99 compatibility layer is
+> new and has not yet been used in production. Its API and behavior
+> may change. Its use is discouraged: port your code to tomlc17's
+> native API instead. Use this layer only as a temporary stopgap while
+> you migrate, and test your application thoroughly if you do.
 
 `compat/tomlc99` provides tomlc99's API on top of tomlc17, so tomlc99
 code can switch by relinking. See
