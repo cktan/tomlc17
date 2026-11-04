@@ -55,6 +55,10 @@ Programs that use it will fail to link.
 As with tomlc99, `toml_set_memutil()` must be called before any parse,
 and keys or strings containing U+0000 are cut short at the NUL.
 
+## How it works
+
+See [`DESIGN.md`](DESIGN.md).
+
 ## Tests
 
 `make -C compat/tomlc99 test` builds tomlc99's own `toml_cat` program,
