@@ -1,5 +1,9 @@
 # tomlc99 compatibility layer
 
+> **EXPERIMENTAL:** this layer is new and has not yet been used in
+> production. Its API and behavior may change. Test your application
+> thoroughly before relying on it.
+
 A drop-in replacement for [tomlc99](https://github.com/cktan/tomlc99),
 built on tomlc17. Code written against tomlc99 keeps its
 `#include "toml.h"` and its calls unchanged; it is only recompiled and
