@@ -19,8 +19,8 @@ static void test_comma_locale(void) {
       !setlocale(LC_NUMERIC, "de_DE") &&
       !setlocale(LC_NUMERIC, "fr_FR.UTF-8") &&
       !setlocale(LC_NUMERIC, "fr_FR")) {
-    printf("SKIPPED: no comma-decimal locale installed\n");
-    return;
+    failed("no comma-decimal locale installed; install de_DE.UTF-8 "
+           "(e.g. sudo locale-gen de_DE.UTF-8)");
   }
   CHECK(0 == strcmp(localeconv()->decimal_point, ","));
 
