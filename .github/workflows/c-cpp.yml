@@ -21,6 +21,8 @@ jobs:
         cache: false
     - name: install toml-test
       run: go install github.com/toml-lang/toml-test/v2/cmd/toml-test@latest
+    - name: install de_DE locale (for test/locale)
+      run: sudo locale-gen de_DE.UTF-8
     - name: make clean all
       run: make clean all
     - name: make test
