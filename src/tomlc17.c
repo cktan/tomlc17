@@ -328,6 +328,8 @@ struct scanner_state_t {
   const char *cur; // points into scanner_t::src[]
   int lineno;      // current line number
   const char *line_start;
+  int bracket_level;
+  int brace_level;
 };
 
 // A scan token
@@ -2957,6 +2959,8 @@ static scanner_state_t scan_mark(scanner_t *sp) {
   mark.cur = sp->cur;
   mark.lineno = sp->lineno;
   mark.line_start = sp->line_start;
+  mark.bracket_level = sp->bracket_level;
+  mark.brace_level = sp->brace_level;
   return mark;
 }
 
@@ -2966,6 +2970,8 @@ static void scan_restore(scanner_t *sp, scanner_state_t mark) {
   sp->cur = mark.cur;
   sp->lineno = mark.lineno;
   sp->line_start = mark.line_start;
+  sp->bracket_level = mark.bracket_level;
+  sp->brace_level = mark.brace_level;
 }
 
 // Return the next token
@@ -3098,6 +3104,9 @@ static int scan_value(scanner_t *sp, token_t *tok) {
  * Return #bytes consumed or -1 on failure.
  */
 static int utf8_to_ucs(const char *orig, int len, uint32_t *ret) {
+  if (len <= 0) {
+    return -1;
+  }
   const unsigned char *buf = (const unsigned char *)orig;
   unsigned i = *buf++;
   uint32_t v;
@@ -3106,8 +3115,6 @@ static int utf8_to_ucs(const char *orig, int len, uint32_t *ret) {
      0xxxxxxx
   */
   if (0 == (i >> 7)) {
-    if (len < 1)
-      return -1;
     v = i;
     return *ret = v, 1;
   }

@@ -107,6 +107,18 @@ static void test_array() {
   CHECK(value == (std::vector<int64_t>{1, 2, 3}));
 }
 
+static void test_missing_key() {
+  printf("test missing key ...\n");
+  const char *doc = "[present]\nx = 1";
+  auto result = toml::parse(doc);
+  CHECK(result.ok());
+  auto tab = result.toptab();
+  CHECK(!tab.get({"missing"}));
+  CHECK(!tab.get({"present", "missing"}));
+  CHECK(!tab.get("missing"));
+  CHECK(*(*tab.get({"present", "x"})).as_int() == 1);
+}
+
 int main() {
   test_string();
   test_int();
@@ -117,5 +129,6 @@ int main() {
   test_datetime();
   test_datetimetz();
   test_array();
+  test_missing_key();
   return 0;
 }

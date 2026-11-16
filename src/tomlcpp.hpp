@@ -159,22 +159,22 @@ public:
   // (which is a table).
   std::optional<Datum> get(std::initializer_list<std::string_view> keys) const {
     Datum tab = *this;
-    Datum value;
     for (auto key : keys) {
-      value = {};
       if (tab.type != TOML_TABLE) {
         return std::nullopt;
       }
-      for (int i = 0; i < tab.u.tab.size; i++) {
-        if (key ==
-            std::string_view{tab.u.tab.key[i], (size_t)tab.u.tab.len[i]}) {
-          value = tab.u.tab.value[i];
-          break;
-        }
+      int i = 0;
+      while (i < tab.u.tab.size &&
+             key !=
+                 std::string_view{tab.u.tab.key[i], (size_t)tab.u.tab.len[i]}) {
+        i++;
       }
-      tab = value;
+      if (i == tab.u.tab.size) {
+        return std::nullopt;
+      }
+      tab = tab.u.tab.value[i];
     }
-    return value;
+    return tab;
   }
 
   // Retrieve the value of a key

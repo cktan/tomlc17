@@ -300,6 +300,9 @@ static void test_utf8(void) {
   int64_t code;
   CHECK(toml_utf8_to_ucs("\xc2", 1, &code) == -1); // truncated
   CHECK(toml_utf8_to_ucs("\x80", 1, &code) == -1); // stray continuation
+  char *empty = malloc(1);
+  CHECK(empty && toml_utf8_to_ucs(empty + 1, 0, &code) == -1); // no bytes
+  free(empty);
   char buf[6];
   CHECK(toml_ucs_to_utf8(-1, buf) == -1);
 }
